@@ -221,21 +221,61 @@ class CodeTantraAutomation:
         print("✓ Login confirmed. Starting automation...\n")
         
     def get_current_problem_title(self, driver):
-        """Extract the current problem content from the page"""
+        """Extract the current problem button title from the iframe"""
         try:
-            # Look for the problem content div
-            problem_div = self.find_element_with_scroll(
-                driver,
-                By.CSS_SELECTOR,
-                "div.ql-editor.whitespace-normal.\\!p-0"
-            )
-            # Get the text content and create a hash for comparison
-            content = problem_div.get_attribute("innerText").strip()
-            # Use first 200 characters for comparison
-            content_hash = hash(content[:200]) if content else None
-            return content_hash
-        except NoSuchElementException:
-            print("⚠ Could not find problem content")
+            print("  Looking for problem button in iframe...")
+            
+            # Switch to the course iframe
+            try:
+                course_iframe = driver.find_element(By.ID, "course-iframe")
+                driver.switch_to.frame(course_iframe)
+                print("  ✓ Switched to course iframe")
+            except Exception as e:
+                print(f"  ⚠ Could not find or switch to course iframe: {e}")
+                return None
+            
+            # Look for the current problem button (the one that's selected/active)
+            try:
+                # Try to find the active/selected button
+                active_button = driver.find_element(By.CSS_SELECTOR, "button.min-w-0.flex-1.text-left.text-sm.font-semibold.hover\\:underline")
+                
+                button_title = active_button.get_attribute("title")
+                button_text = active_button.text
+                
+                if button_title:
+                    print(f"  ✓ Found problem button: '{button_title}'")
+                    print(f"  Button text: '{button_text}'")
+                    
+                    # Switch back to main content
+                    driver.switch_to.default_content()
+                    return button_title
+                else:
+                    print("  ⚠ Button found but no title attribute")
+                    driver.switch_to.default_content()
+                    return None
+                    
+            except Exception as e:
+                print(f"  ⚠ Could not find problem button: {e}")
+                
+                # Try to find any button with title containing problem info
+                all_buttons = driver.find_elements(By.TAG_NAME, "button")
+                for button in all_buttons:
+                    title = button.get_attribute("title")
+                    if title and ("DDL" in title or "Flight" in title or "Reservation" in title):
+                        print(f"  Found button: title='{title}', text='{button.text}'")
+                        driver.switch_to.default_content()
+                        return title
+                
+                driver.switch_to.default_content()
+                return None
+                
+        except Exception as e:
+            print(f"⚠ Error getting problem title: {e}")
+            # Make sure we're back in main content
+            try:
+                driver.switch_to.default_content()
+            except:
+                pass
             return None
             
     def sync_to_same_problem(self):
@@ -249,16 +289,26 @@ class CodeTantraAutomation:
             title_answers = self.get_current_problem_title(self.driver_answers)
             title_target = self.get_current_problem_title(self.driver_target)
             
-            print(f"  Answers account content hash: {title_answers}")
-            print(f"  Target account content hash:  {title_target}")
+            print(f"  Answers problem: '{title_answers}'")
+            print(f"  Target problem: '{title_target}'")
             
-            if title_answers == title_target:
+            if title_answers and title_target and title_answers == title_target:
                 print("✓ Both accounts are on the same problem\n")
                 return True
+            elif not title_answers:
+                print("⚠ Could not get problem title from answers account")
+                return False
+            elif not title_target:
+                print("⚠ Could not get problem title from target account")
+                return False
                 
             # If target is behind, click Next on target
             print("  Problems don't match. Navigating target account...")
             try:
+                # Switch to iframe first
+                course_iframe = self.driver_target.find_element(By.ID, "course-iframe")
+                self.driver_target.switch_to.frame(course_iframe)
+                
                 next_button = self.find_element_with_scroll(
                     self.driver_target,
                     By.CSS_SELECTOR,
@@ -266,9 +316,13 @@ class CodeTantraAutomation:
                 )
                 self.scroll_to_element(self.driver_target, next_button)
                 next_button.click()
+                
+                # Switch back to main content
+                self.driver_target.switch_to.default_content()
                 time.sleep(2)
             except NoSuchElementException:
                 print("⚠ Could not find Next button on target")
+                self.driver_target.switch_to.default_content()
                 return False
                 
             attempts += 1
@@ -280,6 +334,10 @@ class CodeTantraAutomation:
         """Extract code from the answers account editor"""
         try:
             print("Extracting code from answers account...")
+            
+            # Switch to iframe first
+            course_iframe = self.driver_answers.find_element(By.ID, "course-iframe")
+            self.driver_answers.switch_to.frame(course_iframe)
             
             # Find the CodeMirror editor content
             editor = self.find_element_with_scroll(
@@ -301,16 +359,24 @@ class CodeTantraAutomation:
             
             full_code = "\n".join(code_text)
             print(f"✓ Extracted {len(code_text)} lines of code")
+            
+            # Switch back to main content
+            self.driver_answers.switch_to.default_content()
             return full_code
             
         except NoSuchElementException as e:
             print(f"⚠ Could not extract code: {e}")
+            self.driver_answers.switch_to.default_content()
             return None
             
     def paste_code_to_target(self, code):
         """Paste code into the target account editor"""
         try:
             print("Pasting code to target account...")
+            
+            # Switch to iframe first
+            course_iframe = self.driver_target.find_element(By.ID, "course-iframe")
+            self.driver_target.switch_to.frame(course_iframe)
             
             # Find the CodeMirror editor
             editor = self.find_element_with_scroll(
@@ -343,16 +409,24 @@ class CodeTantraAutomation:
                 time.sleep(0.05)  # Small delay between lines
             
             print("✓ Code pasted successfully")
+            
+            # Switch back to main content
+            self.driver_target.switch_to.default_content()
             return True
             
         except Exception as e:
             print(f"⚠ Error pasting code: {e}")
+            self.driver_target.switch_to.default_content()
             return False
             
     def submit_solution(self):
         """Click the submit button on target account"""
         try:
             print("Submitting solution...")
+            
+            # Switch to iframe first
+            course_iframe = self.driver_target.find_element(By.ID, "course-iframe")
+            self.driver_target.switch_to.frame(course_iframe)
             
             submit_button = self.find_element_with_scroll(
                 self.driver_target,
@@ -362,17 +436,25 @@ class CodeTantraAutomation:
             self.scroll_to_element(self.driver_target, submit_button)
             submit_button.click()
             print("✓ Submit button clicked")
+            
+            # Switch back to main content
+            self.driver_target.switch_to.default_content()
             time.sleep(3)  # Wait for submission to process
             return True
             
         except NoSuchElementException:
             print("⚠ Could not find Submit button")
+            self.driver_target.switch_to.default_content()
             return False
             
     def check_submission_success(self):
         """Check if submission was successful by looking for badge-success"""
         try:
             print("Checking submission result...")
+            
+            # Switch to iframe first
+            course_iframe = self.driver_target.find_element(By.ID, "course-iframe")
+            self.driver_target.switch_to.frame(course_iframe)
             
             # Wait for the result badge to appear
             wait = WebDriverWait(self.driver_target, 10)
@@ -385,6 +467,9 @@ class CodeTantraAutomation:
             
             time_text = badge.text
             print(f"✓ Submission SUCCESSFUL! Time: {time_text}")
+            
+            # Switch back to main content
+            self.driver_target.switch_to.default_content()
             return True
             
         except TimeoutException:
@@ -399,7 +484,8 @@ class CodeTantraAutomation:
                 print(f"✗ Submission FAILED: {error_badge.text}")
             except NoSuchElementException:
                 print("? Could not determine submission result")
-                
+            
+            self.driver_target.switch_to.default_content()
             return False
             
     def move_to_next_problem(self):
@@ -408,6 +494,9 @@ class CodeTantraAutomation:
             print("\nMoving to next problem...")
             
             # Click Next on answers account
+            course_iframe_answers = self.driver_answers.find_element(By.ID, "course-iframe")
+            self.driver_answers.switch_to.frame(course_iframe_answers)
+            
             next_answers = self.find_element_with_scroll(
                 self.driver_answers,
                 By.CSS_SELECTOR,
@@ -415,9 +504,14 @@ class CodeTantraAutomation:
             )
             self.scroll_to_element(self.driver_answers, next_answers)
             next_answers.click()
+            
+            self.driver_answers.switch_to.default_content()
             time.sleep(1)
             
             # Click Next on target account
+            course_iframe_target = self.driver_target.find_element(By.ID, "course-iframe")
+            self.driver_target.switch_to.frame(course_iframe_target)
+            
             next_target = self.find_element_with_scroll(
                 self.driver_target,
                 By.CSS_SELECTOR,
@@ -425,6 +519,8 @@ class CodeTantraAutomation:
             )
             self.scroll_to_element(self.driver_target, next_target)
             next_target.click()
+            
+            self.driver_target.switch_to.default_content()
             time.sleep(2)
             
             print("✓ Moved to next problem\n")
@@ -432,6 +528,8 @@ class CodeTantraAutomation:
             
         except NoSuchElementException:
             print("⚠ Could not find Next button. Might be at the last problem.")
+            self.driver_answers.switch_to.default_content()
+            self.driver_target.switch_to.default_content()
             return False
             
     def process_single_problem(self):
