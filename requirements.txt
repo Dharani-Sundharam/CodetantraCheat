@@ -1,2 +1,7 @@
-selenium==4.15.2
-webdriver-manager==4.0.1
+# CodeTantra Automation Tool Dependencies
+
+# Main automation framework
+playwright==1.40.0
+
+# Additional utilities
+asyncio
