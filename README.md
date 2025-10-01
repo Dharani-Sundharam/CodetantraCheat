@@ -1,148 +1,202 @@
-# Code Tantra Automation Tool
+# 🚀 CodeTantra Automation Tool
 
-Python automation tool for Code Tantra using Selenium WebDriver with Firefox.
+A powerful automation tool for CodeTantra that intelligently handles different types of coding problems with smart copy-paste functionality and automatic submission.
 
-## ⚠️ Disclaimer
+## ✨ Features
 
-This tool is for **educational purposes only**. Use responsibly and in accordance with your institution's academic integrity policies.
+### 🎯 **Smart Problem Detection**
+- **Type 1 Problems**: Fully editable code - complete replacement
+- **Type 2 Problems**: Static code with editable sections - smart insertion
+- **Automatic Detection**: Uses RESET button method for reliable type detection
 
-## Features
+### 🔧 **Intelligent Code Handling**
+- **Fast Typing**: Ultra-fast code input with 1ms character delay
+- **Auto-Close Bracket Handling**: Smart management of CodeMirror's auto-closing features
+- **Strategy B for Type 2**: Comment static lines + type complete code
+- **Error Recovery**: Skip problematic problems and continue
 
-- Opens two separate Firefox browser windows side-by-side
-- Syncs both accounts to the same problem
-- **FULLY AUTOMATED** copy-paste functionality:
-  - Extracts code from CodeMirror editor in answers account
-  - Pastes code into target account using clipboard + line-by-line fallback
-  - Verifies successful copy-paste operations
-- Handles multiple choice questions automatically
-- Submits solutions and verifies success
-- Processes multiple problems automatically
-- Handles navigation between problems
-- Enhanced error handling and reliability
+### 📝 **Code Completion Strategies**
 
-## Requirements
+#### **Type 1 (Fully Editable)**
+1. Extract complete code from answers account
+2. Clear target editor completely
+3. Type complete code with auto-close handling
+4. Clean up extra brackets (5-second Delete)
+5. Submit and verify
 
-- Python 3.7+
-- Firefox browser installed
-- geckodriver (automatically managed by webdriver-manager)
+#### **Type 2 (Static + Editable)**
+1. Select all existing content
+2. Comment everything with `Ctrl+/`
+3. Move to end and add 3 new lines
+4. Type complete code from answers
+5. Clean up extra brackets (5-second Delete)
+6. Submit and verify
 
-## Installation
+### 🛡️ **Robust Error Handling**
+- **Skip on Failure**: Automatically skips problematic problems
+- **Retry Logic**: Up to 3 submission attempts with cleanup
+- **Error Logging**: Detailed error tracking for each problem
+- **Graceful Recovery**: Continue processing even if individual problems fail
 
-1. Install required packages:
+### ✅ **Submission Verification**
+- **Test Case Success**: Checks for "out of X test case(s) passed"
+- **Multiple Patterns**: Handles hidden and shown test cases
+- **Success Confirmation**: Verifies submission before moving to next problem
+
+## 🚀 Quick Start
+
+### **Prerequisites**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Make sure Firefox is installed on your system
-
-## Usage
-
-### Option 1: Automatic Login (Recommended)
-
-1. Copy the credentials template:
-```bash
-cp credentials.example.py credentials.py
-```
-
-2. Edit `credentials.py` with your actual credentials:
+### **Configuration**
+1. Update `credentials.py` with your login details:
 ```python
 ANSWERS_ACCOUNT = {
-    'username': 'your_answers_account@rmd.ac.in',
-    'password': 'your_password'
+    "email": "your_answers_email@example.com",
+    "password": "your_password"
 }
 
 TARGET_ACCOUNT = {
-    'username': 'your_target_account@rmd.ac.in',
-    'password': 'your_password'
+    "email": "your_target_email@example.com", 
+    "password": "your_password"
 }
 ```
 
-3. Run the script:
+### **Run Automation**
 ```bash
-python codetantra_automation.py
+python codetantra_playwright.py
 ```
 
-4. The script will automatically:
-   - Navigate to https://rmd.codetantra.com/login.jsp
-   - Log in to both accounts
-   - Wait for you to navigate to the problems section
-   - Start automation when you press ENTER
+## 📁 Project Structure
 
-### Option 2: Manual Login
-
-1. Delete or rename `credentials.py`
-2. Run the script:
-```bash
-python codetantra_automation.py
 ```
-3. Follow the prompts:
-   - Enter Code Tantra URL (optional)
-   - **Log in manually** to both browser windows:
-     - Left window: Account WITH answers
-     - Right window: Account WITHOUT answers (target)
-   - Press ENTER when both accounts are logged in
-   - Specify number of problems to process (or ENTER for all)
+CodetantraCheat/
+├── codetantra_playwright.py    # Main automation script
+├── credentials.py              # Login credentials
+├── config.py                   # Configuration settings
+├── requirements.txt            # Python dependencies
+├── run.bat                     # Windows batch file
+├── README.md                   # This file
+├── QUICK_START.md             # Quick start guide
+├── SETUP_GUIDE.md             # Detailed setup guide
+└── debug_scripts/             # Debug and utility scripts
+    ├── codemirror_test.py     # CodeMirror testing
+    ├── debug_page.py          # Page debugging
+    ├── debug_problem_number.py # Problem number debugging
+    ├── test_connection.py     # Connection testing
+    └── setup_playwright.py    # Playwright setup
+```
 
-## Key Features
+## 🎯 How It Works
 
-- ✅ **Automatic login** with credentials from `credentials.py`
-- ✅ **Smart scrolling** to find Next/Prev buttons anywhere on page
-- ✅ Handles problem synchronization with Next/Prev buttons
-- ✅ Extracts code from CodeMirror editor
-- ✅ Pastes line-by-line to avoid issues
-- ✅ Verifies successful submission (badge-success)
-- ✅ Processes multiple problems automatically
-- ✅ Side-by-side windows for easy monitoring
-- ✅ Graceful error handling
-- ✅ Customizable via `config.py`
+### **1. Problem Detection**
+- Uses RESET button to determine if code is fully editable (Type 1) or has static sections (Type 2)
+- Automatically detects the problem type and applies appropriate strategy
 
-## How It Works
+### **2. Code Extraction**
+- Extracts complete code from answers account
+- Handles CodeMirror editor within iframe
+- Preserves exact formatting and structure
 
-1. **Synchronization**: Compares problem titles between both accounts using the button element with class `min-w-0 flex-1 text-left text-sm font-semibold hover:underline`
+### **3. Smart Pasting**
+- **Type 1**: Complete code replacement
+- **Type 2**: Comment static lines + add complete code below
+- Ultra-fast typing with auto-close bracket handling
 
-2. **Navigation**: Uses Next/Prev buttons with accesskey attributes to navigate between problems
+### **4. Submission & Verification**
+- Automatic submission with retry logic
+- 5-second Delete cleanup to remove extra brackets
+- Verification using test case success messages
+- Skip problematic problems and continue
 
-3. **Code Extraction**: Reads content from CodeMirror editor (`div.cm-content[contenteditable='true']`)
+## ⚙️ Configuration Options
 
-4. **Code Pasting**: Writes to CodeMirror editor in target account, handling line-by-line to avoid issues
+### **Speed Settings**
+- **Character Delay**: 1ms (ultra-fast)
+- **Line Break Delay**: 5ms (very fast)
+- **Cleanup Duration**: 5 seconds (thorough)
 
-5. **Submission**: Clicks Submit button with class `btn no-animation btn-xs rounded !btn-success`
+### **Error Handling**
+- **Max Retries**: 3 attempts per submission
+- **Skip on Error**: Automatically skip problematic problems
+- **Error Logging**: Detailed error tracking
 
-6. **Verification**: Checks for `badge-success` class to confirm successful submission
+### **Verification Patterns**
+- `"out of 1 hidden test case(s) passed"`
+- `"out of 2 shown test case(s) passed"`
+- `"test case(s) passed"` (general pattern)
+- `"Test case passed successfully"` (fallback)
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-- **Firefox not found**: Make sure Firefox is installed and in your PATH
-- **Login fails**: Check credentials in `credentials.py` are correct
-- **Elements not found**: Website structure may have changed; check CSS selectors in `config.py`
-- **Paste not working**: The script uses keyboard shortcuts; ensure focus is on the editor
-- **Next button not found**: The script now scrolls to find buttons; if still failing, check selector
-- **Red lines issue**: The script replaces all content; unchangeable lines should remain as they are in the template
+### **Common Issues**
 
-## Security Note
+1. **Login Problems**
+   - Check credentials in `credentials.py`
+   - Ensure accounts are accessible
+   - Verify browser compatibility
 
-⚠️ **IMPORTANT**: The `credentials.py` file contains your passwords.
-- Never commit this file to Git (it's in `.gitignore`)
-- Keep it secure on your local machine
-- Use strong, unique passwords
-- Consider using environment variables for extra security
+2. **Code Not Pasting**
+   - Tool automatically falls back to fast typing
+   - Check iframe loading in browser
+   - Verify CodeMirror editor detection
 
-## Customization
+3. **Submission Failures**
+   - Tool automatically retries with cleanup
+   - Check for submit button availability
+   - Verify test case success patterns
 
-You can modify the script to:
-- Change browser window positions/sizes
-- Add delays between actions
-- Enable headless mode (uncomment the headless option)
-- Add logging to file
-- Handle different problem types
+4. **Problem Skipping**
+   - Normal behavior for problematic problems
+   - Check error log for details
+   - Tool continues with next problem
 
-## Notes
+### **Debug Mode**
+Use scripts in `debug_scripts/` folder for troubleshooting:
+- `codemirror_test.py`: Test CodeMirror extraction
+- `debug_page.py`: Debug page elements
+- `test_connection.py`: Test account connections
 
-- The script waits for manual login to avoid storing credentials
-- Both browser windows are positioned side-by-side for easy monitoring
-- Small delays are added between actions to ensure page loads
-- The script gracefully handles errors and continues to next problems
+## 📊 Performance
 
-## License
+- **Typing Speed**: ~1000 characters per second
+- **Problem Processing**: ~30-60 seconds per problem
+- **Error Recovery**: Automatic skip and continue
+- **Success Rate**: High with automatic retry logic
 
-For educational use only.
+## 🛡️ Safety Features
+
+- **Error Isolation**: Problems fail independently
+- **Graceful Degradation**: Continue processing on errors
+- **Detailed Logging**: Track all issues and successes
+- **Automatic Cleanup**: Remove extra characters before submission
+
+## 📈 Usage Statistics
+
+The tool tracks and reports:
+- ✅ **Problems Solved**: Successfully completed
+- ⚠️ **Problems Skipped**: Failed but continued
+- ❌ **Problems Failed**: Critical failures
+- 📝 **Error Log**: Detailed error information
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is for educational purposes only. Please use responsibly and in accordance with CodeTantra's terms of service.
+
+## ⚠️ Disclaimer
+
+This tool is designed for educational and testing purposes. Users are responsible for ensuring compliance with CodeTantra's terms of service and academic integrity policies.
+
+---
+
+**Happy Coding! 🚀**

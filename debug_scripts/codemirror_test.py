@@ -556,10 +556,10 @@ class CodeMirrorTester:
             return False
     
     async def cleanup(self):
-        """Clean up browser"""
-        if self.browser:
-            await self.browser.close()
-            print("✓ Browser closed")
+        """Keep browser open for manual use"""
+        print("✓ Browser will remain open for manual use")
+        print("✓ You can continue using the browser manually")
+        # Don't close the browser - keep it open
 
 async def main():
     """Main test function with SMART copy/paste using RESET button detection"""
@@ -643,10 +643,18 @@ async def main():
         traceback.print_exc()
         
     finally:
-        print("\nCleaning up...")
-        if playwright:
-            await playwright.stop()
+        print("\nTest completed!")
         await tester.cleanup()
+        print("\n" + "="*60)
+        print("BROWSER KEPT OPEN")
+        print("="*60)
+        print("The browser will remain open for you to:")
+        print("• Test different problems")
+        print("• Verify the extraction results")
+        print("• Continue manual testing")
+        print("• Close manually when done")
+        print("="*60)
+        # Don't stop playwright - keep browser open
 
 if __name__ == "__main__":
     # Check dependencies
