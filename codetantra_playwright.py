@@ -323,11 +323,11 @@ class CodeTantraPlaywrightAutomation:
         if num_answers and num_target and num_answers == num_target:
             print("✓ Both accounts are on the same problem")
             
-            # Check if we've reached a Quiz (unit finished)
-            if await self.check_for_quiz():
-                print("🎯 QUIZ DETECTED - Unit finished!")
-                self.show_unit_finished_popup()
-                return False  # Stop automation
+            # Check if we've reached a Quiz (unit finished) - COMMENTED OUT
+            # if await self.check_for_quiz():
+            #     print("🎯 QUIZ DETECTED - Unit finished!")
+            #     self.show_unit_finished_popup()
+            #     return False  # Stop automation
             
             # If it's a module question (not x.x.x), click to get back to x.x.x format
             if not re.match(r'^\d+\.\d+\.\d+', num_answers):
@@ -340,59 +340,70 @@ class CodeTantraPlaywrightAutomation:
         else:
             return False
     
-    async def check_for_quiz(self):
-        """Check if current page shows a Quiz (unit finished)"""
-        try:
-            # Check both pages for "Quiz" text
-            quiz_answers = await self.page_answers.evaluate("""
-                () => {
-                    const iframe = document.getElementById('course-iframe');
-                    if (!iframe) return false;
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    return iframeDoc.body.textContent.toLowerCase().includes('quiz');
-                }
-            """)
-            
-            quiz_target = await self.page_target.evaluate("""
-                () => {
-                    const iframe = document.getElementById('course-iframe');
-                    if (!iframe) return false;
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    return iframeDoc.body.textContent.toLowerCase().includes('quiz');
-                }
-            """)
-            
-            return quiz_answers or quiz_target
-            
-        except Exception as e:
-            print(f"  ⚠ Error checking for quiz: {e}")
-            return False
+    # COMMENTED OUT - Quiz detection functions
+    # async def check_for_quiz(self):
+    #     """Check if current page shows a Quiz with strict pattern matching"""
+    #     try:
+    #         # Check both pages for exact "Unit X - Quiz Y" pattern
+    #         quiz_answers = await self.page_answers.evaluate("""
+    #             () => {
+    #                 const iframe = document.getElementById('course-iframe');
+    #                 if (!iframe) return false;
+    #                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    #                 const text = iframeDoc.body.textContent;
+    #                 // Look for pattern like "Unit 2 - Quiz 1" or "Unit 10 - Quiz 5"
+    #                 const quizPattern = /Unit\\s+\\d+\\s*-\\s*Quiz\\s+\\d+/i;
+    #                 return quizPattern.test(text);
+    #             }
+    #         """)
+    #         
+    #         quiz_target = await self.page_target.evaluate("""
+    #             () => {
+    #                 const iframe = document.getElementById('course-iframe');
+    #                 if (!iframe) return false;
+    #                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    #                 const text = iframeDoc.body.textContent;
+    #                 // Look for pattern like "Unit 2 - Quiz 1" or "Unit 10 - Quiz 5"
+    #                 const quizPattern = /Unit\\s+\\d+\\s*-\\s*Quiz\\s+\\d+/i;
+    #                 return quizPattern.test(text);
+    #             }
+    #         """)
+    #         
+    #         if quiz_answers or quiz_target:
+    #             print("  🎯 QUIZ DETECTED: Found 'Unit X - Quiz Y' pattern")
+    #             return True
+    #         else:
+    #             return False
+    #         
+    #     except Exception as e:
+    #         print(f"  ⚠ Error checking for quiz: {e}")
+    #         return False
     
-    def show_unit_finished_popup(self):
-        """Show tkinter popup when unit is finished"""
-        try:
-            # Create root window (hidden)
-            root = tk.Tk()
-            root.withdraw()  # Hide the main window
-            
-            # Show message box
-            messagebox.showinfo(
-                "Unit Completed! 🎉",
-                "A UNIT has been finished!\n\n"
-                "Please manually navigate both accounts to the NEXT UNIT.\n\n"
-                "Click OK when ready to continue automation."
-            )
-            
-            # Destroy the root window
-            root.destroy()
-            
-        except Exception as e:
-            print(f"⚠ Could not show popup: {e}")
-            print("\n" + "="*60)
-            print("🎉 UNIT COMPLETED!")
-            print("="*60)
-            print("Please navigate both accounts to the next unit manually.")
-            input("Press ENTER when ready to continue...")
+    # def show_unit_finished_popup(self):
+    #     """Show tkinter popup when unit is finished"""
+    #     try:
+    #         # Create root window (hidden)
+    #         root = tk.Tk()
+    #         root.withdraw()  # Hide the main window
+    #         
+    #         # Show message box
+    #         messagebox.showinfo(
+    #             "Unit Completed! 🎉",
+    #             "A UNIT has been finished!\n\n"
+    #             "Please manually navigate both accounts to the NEXT UNIT.\n\n"
+    #             "Click OK when ready to continue automation."
+    #         )
+    #         
+    #         # Destroy the root window
+    #         root.destroy()
+    #         
+    #     except Exception as e:
+    #         print(f"⚠ Could not show popup: {e}")
+    #         print("\n" + "="*60)
+    #         print("🎉 UNIT COMPLETED!")
+    #         print("="*60)
+    #         print("Please navigate both accounts to the next unit manually.")
+    #         input("Press ENTER when ready to continue...")
     
     async def click_module_question(self, page):
         """Click on module question to get back to x.x.x format"""
@@ -410,6 +421,34 @@ class CodeTantraPlaywrightAutomation:
         except Exception as e:
             print(f"    ⚠ Could not click module question: {e}")
         
+    async def detect_question_type(self, page):
+        """Detect the type of question on the page"""
+        try:
+            iframe = page.frame_locator("#course-iframe")
+            
+            # Check for CodeMirror editor (Complete the code)
+            editor = iframe.locator("div.cm-content[contenteditable='true']")
+            if await editor.count() > 0:
+                return "code_completion"
+            
+            # Check for multiple choice options
+            options = iframe.locator("input[type='radio'], input[type='checkbox']")
+            option_count = await options.count()
+            
+            if option_count > 0:
+                # Check if any are already selected (multiple choice)
+                selected_count = await iframe.locator("input[type='radio']:checked, input[type='checkbox']:checked").count()
+                if selected_count > 1:
+                    return "multiple_choice"
+                else:
+                    return "single_choice"
+            
+            return "unknown"
+            
+        except Exception as e:
+            print(f"⚠ Error detecting question type: {e}")
+            return "unknown"
+    
     async def get_code_from_answers(self):
         """Extract code from the answers account editor"""
         try:
@@ -483,22 +522,127 @@ class CodeTantraPlaywrightAutomation:
         except Exception as e:
             print(f"⚠ Error pasting code: {e}")
             return False
+    
+    async def get_selected_answers(self, page):
+        """Get selected answers from answers account"""
+        try:
+            iframe = page.frame_locator("#course-iframe")
+            
+            # Get all checked options
+            checked_options = iframe.locator("input:checked")
+            count = await checked_options.count()
+            
+            answers = []
+            for i in range(count):
+                option = checked_options.nth(i)
+                # Get the label text or value
+                label = await option.evaluate("""
+                    (el) => {
+                        const label = el.closest('label') || 
+                                   el.parentElement.querySelector('label') ||
+                                   el.parentElement;
+                        return label ? label.textContent.trim() : el.value || '';
+                    }
+                """)
+                answers.append(label)
+            
+            return answers
+            
+        except Exception as e:
+            print(f"⚠ Error getting selected answers: {e}")
+            return []
+    
+    async def select_answers_on_target(self, answers):
+        """Select the same answers on target account"""
+        try:
+            print("Selecting answers on target account...")
+            iframe = self.page_target.frame_locator("#course-iframe")
+            
+            # Get all available options
+            all_options = iframe.locator("input[type='radio'], input[type='checkbox']")
+            option_count = await all_options.count()
+            
+            for i in range(option_count):
+                option = all_options.nth(i)
+                
+                # Get the label text for this option
+                label_text = await option.evaluate("""
+                    (el) => {
+                        const label = el.closest('label') || 
+                                   el.parentElement.querySelector('label') ||
+                                   el.parentElement;
+                        return label ? label.textContent.trim() : el.value || '';
+                    }
+                """)
+                
+                # Check if this option should be selected
+                if any(answer in label_text for answer in answers):
+                    await option.check()
+                    print(f"  ✓ Selected: {label_text}")
+            
+            print("✓ Answers selected successfully")
+            return True
+            
+        except Exception as e:
+            print(f"⚠ Error selecting answers: {e}")
+            return False
+    
+    async def handle_question_answer(self):
+        """Main function to handle different question types"""
+        try:
+            # Detect question type on answers account
+            question_type = await self.detect_question_type(self.page_answers)
+            print(f"Question type detected: {question_type}")
+            
+            if question_type == "code_completion":
+                print("⚠ Code completion question detected - SKIPPING")
+                print("   Will move to next question...")
+                return "skip"  # Special return value to indicate skip
+                    
+            elif question_type in ["single_choice", "multiple_choice"]:
+                # Handle multiple choice questions
+                answers = await self.get_selected_answers(self.page_answers)
+                if answers:
+                    print(f"✓ Found {len(answers)} selected answers: {answers}")
+                    return await self.select_answers_on_target(answers)
+                else:
+                    print("⚠ No answers found on answers account")
+                    return False
+                    
+            else:
+                print("⚠ Unknown question type - SKIPPING")
+                return "skip"  # Skip unknown question types
+                
+        except Exception as e:
+            print(f"⚠ Error handling question: {e}")
+            return False
             
     async def submit_solution(self):
-        """Click the submit button on target account"""
+        """Click the submit button on target account with proper delay"""
         try:
             print("Submitting solution...")
             
             # Switch to iframe first
             iframe = self.page_target.frame_locator("#course-iframe")
             
-            # Use the specific locator from codegen
-            submit_button = iframe.locator("[id=\"__ss-question-submit\"]").get_by_role("button", name="Submit")
+            # Wait for submit button to be available (up to 30 seconds)
+            print("  Waiting for submit button to be available...")
+            try:
+                submit_button = iframe.locator("[id=\"__ss-content-actions\"]").get_by_role("button", name="Submit")
+                await submit_button.wait_for(state="visible", timeout=30000)  # 30 second timeout
+                print("  ✓ Submit button found")
+            except Exception as e:
+                print(f"  ⚠ Submit button not found within 30 seconds: {e}")
+                return False
+            
+            # Click the submit button
             await submit_button.scroll_into_view_if_needed()
             await submit_button.click()
             print("✓ Submit button clicked")
             
-            await self.page_target.wait_for_timeout(3000)  # Wait for submission to process
+            # Wait longer for submission to process
+            print("  Waiting for submission to process...")
+            await self.page_target.wait_for_timeout(5000)  # 5 second wait after click
             return True
             
         except Exception as e:
@@ -571,17 +715,46 @@ class CodeTantraPlaywrightAutomation:
             return False
             
     async def process_single_problem(self):
-        """Process one problem: just verify and move next (copy/paste disabled for testing)"""
+        """Process one problem: verify, answer, submit"""
         print("\n" + "="*60)
         print("PROCESSING NEW PROBLEM")
         print("="*60)
         
-        # Just verify both are on same problem
-        if await self.check_problems_match():
-            print("✓ Problem verified - ready for processing")
-            return True
-        else:
+        # Verify both are on same problem
+        if not await self.check_problems_match():
             print("⚠ Problems don't match - skipping")
+            return False
+        
+        print("✓ Problem verified - processing answer...")
+        
+        # Handle the question (copy/paste or select answers)
+        result = await self.handle_question_answer()
+        
+        if result == "skip":
+            print("✓ Question skipped - moving to next")
+            return "skipped"  # Special return value for skipped questions
+            
+        elif result == True:
+            print("✓ Answer processed successfully")
+            
+            # Try to submit the solution (if submit fails, Next button will auto-submit)
+            print("  Attempting to submit...")
+            submit_success = await self.submit_solution()
+            
+            if submit_success:
+                print("✓ Solution submitted manually")
+                # Check if submission was successful
+                if await self.check_submission_success():
+                    print("✓ Submission successful!")
+                    return True
+                else:
+                    print("⚠ Manual submission may have failed - Next button will auto-submit")
+                    return True  # Continue anyway, Next will handle it
+            else:
+                print("⚠ Submit button not found - Next button will auto-submit")
+                return True  # Continue anyway, Next will handle it
+        else:
+            print("⚠ Failed to process answer")
             return False
         
     async def run_automation(self, num_problems=None):
@@ -609,6 +782,7 @@ class CodeTantraPlaywrightAutomation:
         
         problems_completed = 0
         problems_failed = 0
+        problems_skipped = 0
         
         try:
             while True:
@@ -616,15 +790,18 @@ class CodeTantraPlaywrightAutomation:
                     print(f"\n✓ Completed {num_problems} problems as requested")
                     break
                     
-                # Process current problem (just verify for now)
-                success = await self.process_single_problem()
+                # Process current problem
+                result = await self.process_single_problem()
                 
-                if success:
+                if result == True:
                     problems_completed += 1
-                    print(f"\n✓ Problem {problems_completed} verified!")
+                    print(f"\n✓ Problem {problems_completed} completed successfully!")
+                elif result == "skipped":
+                    problems_skipped += 1
+                    print(f"\n✓ Problem skipped (Total skipped: {problems_skipped})")
                 else:
                     problems_failed += 1
-                    print(f"\n⚠ Problem mismatch (Total: {problems_failed})")
+                    print(f"\n⚠ Problem failed (Total failures: {problems_failed})")
                     
                 # Move to next
                 if not await self.move_to_next_problem():
@@ -641,6 +818,7 @@ class CodeTantraPlaywrightAutomation:
         print("AUTOMATION COMPLETE")
         print("="*60)
         print(f"Problems completed: {problems_completed}")
+        print(f"Problems skipped: {problems_skipped}")
         print(f"Problems failed: {problems_failed}")
         print("="*60)
         
