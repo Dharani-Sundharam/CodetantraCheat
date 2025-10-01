@@ -450,77 +450,151 @@ class CodeTantraPlaywrightAutomation:
             return "unknown"
     
     async def get_code_from_answers(self):
-        """Extract code from the answers account editor"""
+        """Extract code from the answers account editor with enhanced error handling"""
         try:
             print("Extracting code from answers account...")
             
             # Switch to iframe first
             iframe = self.page_answers.frame_locator("#course-iframe")
             
-            # Find the CodeMirror editor content
+            # Find the CodeMirror editor content with better waiting
             editor = iframe.locator("div.cm-content[contenteditable='true']")
-            await editor.wait_for()
+            await editor.wait_for(state="visible", timeout=10000)
             
-            # Get all lines
+            # Scroll to editor to ensure it's visible
+            await editor.scroll_into_view_if_needed()
+            
+            # Get all lines with better error handling
             lines = iframe.locator("div.cm-line")
             line_count = await lines.count()
             
+            if line_count == 0:
+                print("⚠ No code lines found in editor")
+                return None
+            
             code_text = []
             for i in range(line_count):
-                line = lines.nth(i)
-                line_text = await line.text_content()
-                if line_text is None:
-                    line_text = ""
-                code_text.append(line_text)
+                try:
+                    line = lines.nth(i)
+                    line_text = await line.text_content()
+                    if line_text is None:
+                        line_text = ""
+                    code_text.append(line_text)
+                except Exception as line_error:
+                    print(f"⚠ Error extracting line {i}: {line_error}")
+                    code_text.append("")  # Add empty line to maintain structure
             
             full_code = "\n".join(code_text)
+            
+            # Clean up the code (remove extra whitespace but preserve structure)
+            cleaned_code = "\n".join(line.rstrip() for line in full_code.split('\n'))
+            
             print(f"✓ Extracted {len(code_text)} lines of code")
-            return full_code
+            print(f"✓ Code preview: {cleaned_code[:100]}{'...' if len(cleaned_code) > 100 else ''}")
+            return cleaned_code
             
         except Exception as e:
             print(f"⚠ Could not extract code: {e}")
+            import traceback
+            traceback.print_exc()
             return None
             
     async def paste_code_to_target(self, code):
-        """Paste code into the target account editor"""
+        """Paste code into the target account editor with enhanced reliability"""
         try:
             print("Pasting code to target account...")
+            
+            if not code or not code.strip():
+                print("⚠ No code to paste")
+                return False
             
             # Switch to iframe first
             iframe = self.page_target.frame_locator("#course-iframe")
             
-            # Find the CodeMirror editor
+            # Find the CodeMirror editor with better waiting
             editor = iframe.locator("div.cm-content[contenteditable='true']")
-            await editor.wait_for()
+            await editor.wait_for(state="visible", timeout=10000)
             
-            # Scroll to editor
+            # Scroll to editor to ensure it's visible
             await editor.scroll_into_view_if_needed()
             
-            # Click to focus
+            # Click to focus the editor
             await editor.click()
             await self.page_target.wait_for_timeout(500)
             
-            # Select all existing content
+            # Clear existing content more reliably
+            print("  Clearing existing content...")
             await editor.press("Control+a")
             await self.page_target.wait_for_timeout(300)
-            
-            # Delete existing content
             await editor.press("Delete")
-            await self.page_target.wait_for_timeout(300)
+            await self.page_target.wait_for_timeout(500)
             
-            # Paste new code line by line to avoid issues
+            # Method 1: Try using clipboard (Ctrl+V) first
+            try:
+                print("  Attempting clipboard paste...")
+                # Set clipboard content using JavaScript with proper escaping
+                await self.page_target.evaluate("""
+                    (code) => {
+                        navigator.clipboard.writeText(code).then(() => {
+                            console.log('Code copied to clipboard');
+                        }).catch(err => {
+                            console.log('Clipboard failed:', err);
+                        });
+                    }
+                """, code)
+                
+                await self.page_target.wait_for_timeout(500)
+                await editor.press("Control+v")
+                await self.page_target.wait_for_timeout(1000)
+                
+                # Verify paste was successful
+                pasted_content = await editor.text_content()
+                if pasted_content and len(pasted_content.strip()) > 0:
+                    print("✓ Code pasted successfully via clipboard")
+                    return True
+                else:
+                    print("⚠ Clipboard paste failed, trying line-by-line...")
+                    
+            except Exception as clipboard_error:
+                print(f"⚠ Clipboard paste failed: {clipboard_error}")
+                print("  Trying line-by-line method...")
+            
+            # Method 2: Line-by-line typing as fallback
+            print("  Pasting line by line...")
             lines = code.split('\n')
-            for i, line in enumerate(lines):
-                await editor.type(line)
-                if i < len(lines) - 1:
-                    await editor.press("Enter")
-                await self.page_target.wait_for_timeout(50)  # Small delay between lines
             
-            print("✓ Code pasted successfully")
-            return True
+            for i, line in enumerate(lines):
+                try:
+                    # Type the line
+                    await editor.type(line)
+                    
+                    # Add newline if not the last line
+                    if i < len(lines) - 1:
+                        await editor.press("Enter")
+                    
+                    # Small delay between lines for stability
+                    await self.page_target.wait_for_timeout(100)
+                    
+                except Exception as line_error:
+                    print(f"⚠ Error pasting line {i+1}: {line_error}")
+                    continue
+            
+            # Verify the paste was successful
+            await self.page_target.wait_for_timeout(1000)
+            pasted_content = await editor.text_content()
+            
+            if pasted_content and len(pasted_content.strip()) > 0:
+                print(f"✓ Code pasted successfully ({len(lines)} lines)")
+                print(f"✓ Paste verification: {pasted_content[:100]}{'...' if len(pasted_content) > 100 else ''}")
+                return True
+            else:
+                print("⚠ Paste verification failed - no content detected")
+                return False
             
         except Exception as e:
             print(f"⚠ Error pasting code: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     async def get_selected_answers(self, page):
@@ -588,16 +662,29 @@ class CodeTantraPlaywrightAutomation:
             return False
     
     async def handle_question_answer(self):
-        """Main function to handle different question types"""
+        """Main function to handle different question types with copy-paste enabled"""
         try:
             # Detect question type on answers account
             question_type = await self.detect_question_type(self.page_answers)
             print(f"Question type detected: {question_type}")
             
             if question_type == "code_completion":
-                print("⚠ Code completion question detected - SKIPPING")
-                print("   Will move to next question...")
-                return "skip"  # Special return value to indicate skip
+                print("✓ Code completion question detected - COPYING CODE")
+                
+                # Extract code from answers account
+                code = await self.get_code_from_answers()
+                if not code:
+                    print("⚠ No code found in answers account")
+                    return False
+                
+                # Paste code to target account
+                paste_success = await self.paste_code_to_target(code)
+                if paste_success:
+                    print("✓ Code copied and pasted successfully!")
+                    return True
+                else:
+                    print("⚠ Failed to paste code to target account")
+                    return False
                     
             elif question_type in ["single_choice", "multiple_choice"]:
                 # Handle multiple choice questions
@@ -615,6 +702,8 @@ class CodeTantraPlaywrightAutomation:
                 
         except Exception as e:
             print(f"⚠ Error handling question: {e}")
+            import traceback
+            traceback.print_exc()
             return False
             
     async def submit_solution(self):
@@ -760,8 +849,8 @@ class CodeTantraPlaywrightAutomation:
     async def run_automation(self, num_problems=None):
         """Main automation loop"""
         print("\n" + "="*60)
-        print("STARTING AUTOMATION - TESTING MODE")
-        print("(Copy/paste disabled - just verifying sync)")
+        print("STARTING AUTOMATION - FULL MODE")
+        print("(Copy/paste ENABLED - full automation active)")
         print("="*60)
         
         # Initial check if problems match

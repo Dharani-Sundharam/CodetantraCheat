@@ -51,11 +51,12 @@ If you don't want to save credentials:
 ## 🎯 What It Does
 
 1. **Syncs** - Makes sure both accounts are on the same problem
-2. **Copies** - Extracts code from the answers account
-3. **Pastes** - Inputs code into the target account
-4. **Submits** - Clicks the submit button
-5. **Verifies** - Checks for the green success badge
-6. **Repeats** - Moves to next problem automatically
+2. **Copies** - Extracts code from the answers account (CodeMirror editor)
+3. **Pastes** - Inputs code into the target account (with clipboard + fallback)
+4. **Verifies** - Confirms code was copied and pasted correctly
+5. **Submits** - Clicks the submit button
+6. **Checks** - Verifies successful submission with green badge
+7. **Repeats** - Moves to next problem automatically
 
 ## ⚠️ Common Issues
 

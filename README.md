@@ -10,11 +10,15 @@ This tool is for **educational purposes only**. Use responsibly and in accordanc
 
 - Opens two separate Firefox browser windows side-by-side
 - Syncs both accounts to the same problem
-- Automatically copies code from the "answers" account
-- Pastes code into the target account
+- **FULLY AUTOMATED** copy-paste functionality:
+  - Extracts code from CodeMirror editor in answers account
+  - Pastes code into target account using clipboard + line-by-line fallback
+  - Verifies successful copy-paste operations
+- Handles multiple choice questions automatically
 - Submits solutions and verifies success
 - Processes multiple problems automatically
 - Handles navigation between problems
+- Enhanced error handling and reliability
 
 ## Requirements
 
