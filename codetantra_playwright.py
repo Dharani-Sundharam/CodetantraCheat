@@ -1185,22 +1185,25 @@ class CodeTantraPlaywrightAutomation:
             traceback.print_exc()
             return False
             
-    async def submit_solution(self):
+    async def submit_solution(self, question_type=None):
         """Click the submit button with cleanup and retry if needed"""
         try:
             print("Submitting solution...")
             
             # Switch to iframe first
             iframe = self.page_target.frame_locator("#course-iframe")
-            editor = iframe.locator("div.cm-content[contenteditable='true']")
             
             # Try submission up to 3 times with cleanup
             for attempt in range(3):
                 print(f"  Attempt {attempt + 1}/3...")
                 
-                # Step 1: Clean up extra brackets (5 seconds of Delete)
-                print("  Cleaning up extra brackets before submit...")
-                await self.cleanup_extra_brackets(editor)
+                # Step 1: Clean up extra brackets ONLY for code-based questions
+                if question_type == "code_completion":
+                    print("  Code completion detected - cleaning up extra brackets...")
+                    editor = iframe.locator("div.cm-content[contenteditable='true']")
+                    await self.cleanup_extra_brackets(editor)
+                else:
+                    print("  Non-code question - skipping bracket cleanup...")
                 
                 # Step 2: Wait for submit button to be available
                 print("  Waiting for submit button to be available...")
@@ -1313,6 +1316,10 @@ class CodeTantraPlaywrightAutomation:
         
         print("✓ Problem verified - processing answer...")
         
+        # Detect question type for appropriate handling
+        question_type = await self.detect_question_type(self.page_answers)
+        print(f"  Question type detected: {question_type}")
+        
         try:
             # Handle the question (copy/paste or select answers)
             result = await self.handle_question_answer()
@@ -1327,21 +1334,27 @@ class CodeTantraPlaywrightAutomation:
                 # Submit the solution
                 print("  Attempting to submit...")
                 try:
-                    submit_success = await self.submit_solution()
+                    submit_success = await self.submit_solution(question_type)
                     
                     if submit_success:
                         print("✓ Solution submitted")
-                        # Check if submission was successful using test case verification
-                        if await self.check_submission_success():
-                            print("✓ Submission successful!")
-                            return True
+                        # For code completion: verify with test cases
+                        if question_type == "code_completion":
+                            if await self.check_submission_success():
+                                print("✓ Submission successful!")
+                                return True
+                            else:
+                                print("⚠ Submission verification failed - skipping problem")
+                                self.error_log.append({
+                                    'problem': current_problem or "Unknown",
+                                    'error': "Submission verification failed - test case not passed"
+                                })
+                                return "skipped"
                         else:
-                            print("⚠ Submission verification failed - skipping problem")
-                            self.error_log.append({
-                                'problem': current_problem or "Unknown",
-                                'error': "Submission verification failed - test case not passed"
-                            })
-                            return "skipped"
+                            # For non-code questions: just wait a moment and proceed
+                            print("✓ Non-code question submitted - proceeding to next...")
+                            await self.page_target.wait_for_timeout(2000)  # Wait 2 seconds
+                            return True
                     else:
                         print("⚠ Submit failed - skipping problem")
                         self.error_log.append({
