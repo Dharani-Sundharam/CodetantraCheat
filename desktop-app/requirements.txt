@@ -1,0 +1,17 @@
+# CodeTantra Automation Desktop App Dependencies
+
+# Main automation dependencies
+playwright==1.40.0
+asyncio
+
+# API communication
+requests==2.31.0
+
+# GUI (Tkinter is built-in with Python)
+# No additional GUI dependencies needed
+
+# Utilities
+pathlib2==2.3.7
+
+# For packaging
+pyinstaller==6.3.0

@@ -4,6 +4,14 @@ A powerful automation tool that intelligently handles different types of code co
 
 ## 🚀 Features
 
+### 🎨 Modern Web Interface
+- **Beautiful UI**: Professional, modern interface built with Streamlit
+- **Real-time Dashboard**: Live progress monitoring with visual feedback
+- **Multiple UI Options**: Basic, Advanced, and Terminal interfaces
+- **Interactive Analytics**: Charts, graphs, and performance metrics
+- **Responsive Design**: Works on desktop, tablet, and mobile devices
+
+### 🤖 Automation Features
 - **Smart Code Type Detection**: Automatically detects Type 1 (fully editable) vs Type 2 (template-based) code problems
 - **Intelligent Code Extraction**: Extracts complete code from answers account with proper scrolling and zoom
 - **Comment Removal**: Automatically cleans code by removing comments using language-specific patterns
@@ -84,22 +92,30 @@ Edit `config.py` to customize:
 
 ## 🚀 Usage
 
-### Quick Start
+### 🎨 Modern Web UI (Recommended)
 ```bash
+# Universal launcher with options
+python launch.py
+
+# Or launch specific UI directly
+python launch_ui.py          # Basic UI
+streamlit run app.py         # Basic UI
+streamlit run app_advanced.py # Advanced UI
+```
+
+### 💻 Terminal Usage
+```bash
+# Simple runner
+python run.py
+
+# Direct execution
 python codetantra_playwright.py
 ```
 
-### Advanced Usage
-```bash
-# Run with specific number of problems
-python codetantra_playwright.py --problems 5
-
-# Run with debug mode
-python codetantra_playwright.py --debug
-
-# Run with custom settings
-python codetantra_playwright.py --answers-account user1 --target-account user2
-```
+### 🎯 UI Features
+- **🌟 Basic UI**: Clean, simple interface with real-time logs
+- **🚀 Advanced UI**: Full-featured dashboard with analytics and charts
+- **💻 Terminal UI**: Command-line interface for power users
 
 ## 🎯 How It Works
 
