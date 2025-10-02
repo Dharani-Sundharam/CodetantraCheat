@@ -18,7 +18,7 @@ try:
     AUTO_LOGIN = True
 except ImportError:
     AUTO_LOGIN = False
-    print("⚠ credentials.py not found. Manual login will be required.")
+    print("[WARNING] credentials.py not found. Manual login will be required.")
 
 
 class CodeTantraPlaywrightAutomation:
@@ -30,6 +30,11 @@ class CodeTantraPlaywrightAutomation:
         self.auto_login = auto_login
         self.error_log = []  # Track errors with problem numbers
         self.comment_remover = CommentRemover()
+        
+        # Problem counters for UI integration
+        self.problems_solved = 0
+        self.problems_failed = 0
+        self.problems_skipped = 0
     
     async def maximize_and_zoom_browser(self, page, zoom_level=0.5):
         """Maximize browser window and set zoom level for better code visibility"""
@@ -48,10 +53,10 @@ class CodeTantraPlaywrightAutomation:
             # Also try setting viewport zoom
             await page.evaluate(f"document.documentElement.style.zoom = '{zoom_level}'")
             
-            print(f"  ✓ Window maximized and zoomed to {zoom_level*100}%")
+            print(f"  [OK] Window maximized and zoomed to {zoom_level*100}%")
             
         except Exception as e:
-            print(f"  ⚠ Could not maximize/zoom window: {e}")
+            print(f"  [WARN] Could not maximize/zoom window: {e}")
     
     async def scroll_through_editor(self, editor):
         """Scroll through the entire editor to ensure all lines are loaded"""
@@ -91,12 +96,12 @@ class CodeTantraPlaywrightAutomation:
                 await editor.evaluate("arguments[0].scrollTop = 0", scroll_container)
                 await self.page_answers.wait_for_timeout(200)
                 
-                print("  ✓ Scrolled through entire editor")
+                print("  [OK] Scrolled through entire editor")
             else:
-                print("  ⚠ Could not find scrollable container")
+                print("  [WARN] Could not find scrollable container")
                 
         except Exception as e:
-            print(f"  ⚠ Could not scroll through editor: {e}")
+            print(f"  [WARN] Could not scroll through editor: {e}")
     
     async def scroll_through_editor_iframe(self, iframe):
         """Scroll through the entire editor in iframe to ensure all lines are loaded"""
@@ -132,10 +137,10 @@ class CodeTantraPlaywrightAutomation:
             """)
             
             await self.page_answers.wait_for_timeout(800)  # Wait for scrolling to complete
-            print("  ✓ Scrolled through iframe editor")
+            print("  [OK] Scrolled through iframe editor")
                 
         except Exception as e:
-            print(f"  ⚠ Could not scroll through iframe editor: {e}")
+            print(f"  [WARN] Could not scroll through iframe editor: {e}")
     
     def detect_code_language(self, code):
         """Detect programming language from code content"""
@@ -167,57 +172,96 @@ class CodeTantraPlaywrightAutomation:
     async def setup_browsers(self):
         """Initialize two separate browser instances"""
         print("Setting up Playwright browsers...")
+        
+        try:
+            # Get screen size and split in half
+            user32 = ctypes.windll.user32
+            screen_width = user32.GetSystemMetrics(0)
+            screen_height = user32.GetSystemMetrics(1)
 
-        # Get screen size and split in half
-        user32 = ctypes.windll.user32
-        screen_width = user32.GetSystemMetrics(0)
-        screen_height = user32.GetSystemMetrics(1)
+            half_width = screen_width // 2
+            window_height = screen_height - 40  # Leave some space for taskbar
 
-        half_width = screen_width // 2
-        window_height = screen_height - 40  # Leave some space for taskbar
+            print("  Launching browser (answers account)...")
+            # Try Firefox first, then Chrome as fallback
+            try:
+                self.browser_answers = await self.playwright.firefox.launch(
+                    headless=False,
+                    args=['--no-sandbox', '--disable-dev-shm-usage']
+                )
+                print("  [OK] Using Firefox browser")
+            except Exception as e:
+                print(f"  Firefox failed: {e}")
+                print("  Trying Chrome as fallback...")
+                self.browser_answers = await self.playwright.chromium.launch(
+                    headless=False,
+                    args=['--no-sandbox', '--disable-dev-shm-usage']
+                )
+                print("  [OK] Using Chrome browser")
+            context_answers = await self.browser_answers.new_context(
+                viewport={'width': half_width, 'height': window_height}
+            )
+            self.page_answers = await context_answers.new_page()
+        
+            # Position and resize using JavaScript
+            await self.page_answers.evaluate(f"""
+                window.resizeTo({half_width}, {window_height});
+                window.moveTo(0, 0);
+            """)
+            
+            # Maximize and zoom for better code visibility
+            await self.maximize_and_zoom_browser(self.page_answers, zoom_level=0.6)
+            
+            print("[OK] First browser window opened (answers account - left)")
 
-        # Create first browser (answers - left half)
-        self.browser_answers = await self.playwright.firefox.launch(headless=False)
-        context_answers = await self.browser_answers.new_context(
-            viewport={'width': half_width, 'height': window_height}
-        )
-        self.page_answers = await context_answers.new_page()
-        
-        # Position and resize using JavaScript
-        await self.page_answers.evaluate(f"""
-            window.resizeTo({half_width}, {window_height});
-            window.moveTo(0, 0);
-        """)
-        
-        # Maximize and zoom for better code visibility
-        await self.maximize_and_zoom_browser(self.page_answers, zoom_level=0.6)
-        
-        print("✓ First browser window opened (answers account - left)")
-
-        # Create second browser (target - right half)
-        self.browser_target = await self.playwright.firefox.launch(headless=False)
-        context_target = await self.browser_target.new_context(
-            viewport={'width': half_width, 'height': window_height}
-        )
-        self.page_target = await context_target.new_page()
-        
-        # Position and resize using JavaScript
-        await self.page_target.evaluate(f"""
-            window.resizeTo({half_width}, {window_height});
-            window.moveTo({half_width}, 0);
-        """)
-        
-        # Maximize and zoom for better code visibility
-        await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
-        
-        print("✓ Second browser window opened (target account - right)")
+            print("  Launching browser (target account)...")
+            # Try Firefox first, then Chrome as fallback
+            try:
+                self.browser_target = await self.playwright.firefox.launch(
+                    headless=False,
+                    args=['--no-sandbox', '--disable-dev-shm-usage']
+                )
+                print("  [OK] Using Firefox browser")
+            except Exception as e:
+                print(f"  Firefox failed: {e}")
+                print("  Trying Chrome as fallback...")
+                self.browser_target = await self.playwright.chromium.launch(
+                    headless=False,
+                    args=['--no-sandbox', '--disable-dev-shm-usage']
+                )
+                print("  [OK] Using Chrome browser")
+            context_target = await self.browser_target.new_context(
+                viewport={'width': half_width, 'height': window_height}
+            )
+            self.page_target = await context_target.new_page()
+            
+            # Position and resize using JavaScript
+            await self.page_target.evaluate(f"""
+                window.resizeTo({half_width}, {window_height});
+                window.moveTo({half_width}, 0);
+            """)
+            
+            # Maximize and zoom for better code visibility
+            await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
+            
+            print("[OK] Second browser window opened (target account - right)")
+            
+        except Exception as e:
+            print(f"[FAIL] Error setting up browsers: {e}")
+            print("  This might be due to:")
+            print("  - Playwright not installed properly")
+            print("  - Firefox not available")
+            print("  - Permission issues")
+            print("  - Antivirus blocking browser launch")
+            print("\n  Try running: playwright install firefox")
+            raise
         
     async def navigate_to_codetantra(self, url):
         """Navigate both browsers to Code Tantra"""
         print(f"\nNavigating to: {url}")
         await self.page_answers.goto(url)
         await self.page_target.goto(url)
-        print("✓ Both browsers navigated to Code Tantra")
+        print("[OK] Both browsers navigated to Code Tantra")
         
     async def login_to_account(self, page, username, password, account_name):
         """Automatically log in to a Code Tantra account"""
@@ -231,18 +275,18 @@ class CodeTantraPlaywrightAutomation:
             print("  Filling username...")
             username_field = page.get_by_placeholder("Email/User Id")
             await username_field.fill(username)
-            print(f"  ✓ Username entered: {username}")
+            print(f"  [OK] Username entered: {username}")
 
             print("  Filling password...")
             password_field = page.get_by_placeholder("Password", exact=True)
             await password_field.fill(password)
-            print("  ✓ Password entered")
+            print("  [OK] Password entered")
 
             # Click LOGIN button
             print("  Clicking LOGIN button...")
             login_button = page.get_by_role("button", name="LOGIN")
             await login_button.click()
-            print("  ✓ LOGIN button clicked")
+            print("  [OK] LOGIN button clicked")
 
             # Wait for login to complete
             await page.wait_for_timeout(5000)
@@ -250,14 +294,14 @@ class CodeTantraPlaywrightAutomation:
             # Check if login was successful (not on login page anymore)
             current_url = page.url
             if "login" not in current_url.lower():
-                print(f"✓ Successfully logged in to {account_name}")
+                print(f"[OK] Successfully logged in to {account_name}")
                 return True
             else:
-                print(f"⚠ Login may have failed for {account_name}")
+                print(f"[WARN] Login may have failed for {account_name}")
                 return False
 
         except Exception as e:
-            print(f"✗ Error logging in to {account_name}: {e}")
+            print(f"[FAIL] Error logging in to {account_name}: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -298,7 +342,7 @@ class CodeTantraPlaywrightAutomation:
                         await page.wait_for_timeout(500)
                         break
             
-            print("  ✓ Menu navigation complete, waiting for page to load...")
+            print("  [OK] Menu navigation complete, waiting for page to load...")
             
             # Wait for the problem button to appear (dynamic wait)
             max_attempts = 60  # 30 seconds max
@@ -318,7 +362,7 @@ class CodeTantraPlaywrightAutomation:
                 """)
                 
                 if result:
-                    print("  ✓ Problem page loaded")
+                    print("  [OK] Problem page loaded")
                     return True
                 
                 await page.wait_for_timeout(500)
@@ -327,11 +371,11 @@ class CodeTantraPlaywrightAutomation:
                 if attempt % 4 == 0:
                     print(f"  Waiting for problem to load... ({attempt * 0.5:.1f}s)")
             
-            print("  ⚠ Problem page did not load in time")
+            print("  [WARN] Problem page did not load in time")
             return False
             
         except Exception as e:
-            print(f"  ⚠ Menu navigation failed: {e}")
+            print(f"  [WARN] Menu navigation failed: {e}")
             return False
     
     def get_current_problem_number_selenium(self, page):
@@ -369,15 +413,15 @@ class CodeTantraPlaywrightAutomation:
             )
             
             if result:
-                print(f"  ✓ Found problem number: '{result['number']}'")
+                print(f"  [OK] Found problem number: '{result['number']}'")
                 print(f"  Full text: '{result['fullText']}'")
                 return result['number']
             else:
-                print("  ⚠ No problem number found")
+                print("  [WARN] No problem number found")
                 return None
                 
         except Exception as e:
-            print(f"⚠ Error getting problem number: {e}")
+            print(f"[WARN] Error getting problem number: {e}")
             return None
     
     async def get_current_problem_number(self, page):
@@ -435,9 +479,9 @@ class CodeTantraPlaywrightAutomation:
                 
                 if result:
                     if result.get('type') == 'module':
-                        print(f"  ✓ Found module question: '{result['number']}'")
+                        print(f"  [OK] Found module question: '{result['number']}'")
                     else:
-                        print(f"  ✓ Found problem number: '{result['number']}'")
+                        print(f"  [OK] Found problem number: '{result['number']}'")
                     print(f"  Full text: '{result['fullText']}'")
                     return result['number']
                 
@@ -447,11 +491,11 @@ class CodeTantraPlaywrightAutomation:
                 if attempt % 4 == 0:  # Print progress every 2 seconds
                     print(f"  Waiting for problem to load... ({attempt * 0.5:.1f}s)")
             
-            print("  ⚠ No problem number found after waiting")
+            print("  [WARN] No problem number found after waiting")
             return None
                 
         except Exception as e:
-            print(f"⚠ Error getting problem number: {e}")
+            print(f"[WARN] Error getting problem number: {e}")
             return None
             
     async def check_problems_match(self):
@@ -465,7 +509,7 @@ class CodeTantraPlaywrightAutomation:
         print(f"  Target problem: {num_target}")
         
         if num_answers and num_target and num_answers == num_target:
-            print("✓ Both accounts are on the same problem")
+            print("[OK] Both accounts are on the same problem")
             
             # Check if we've reached a Quiz (unit finished) - COMMENTED OUT
             # if await self.check_for_quiz():
@@ -478,7 +522,7 @@ class CodeTantraPlaywrightAutomation:
                 print("  Module question detected - clicking to get x.x.x format...")
                 await self.click_module_question(self.page_answers)
                 await self.click_module_question(self.page_target)
-                print("  ✓ Clicked module questions to return to x.x.x format\n")
+                print("  [OK] Clicked module questions to return to x.x.x format\n")
             
             return True
         else:
@@ -520,7 +564,7 @@ class CodeTantraPlaywrightAutomation:
     #             return False
     #         
     #     except Exception as e:
-    #         print(f"  ⚠ Error checking for quiz: {e}")
+    #         print(f"  [WARN] Error checking for quiz: {e}")
     #         return False
     
     # def show_unit_finished_popup(self):
@@ -542,7 +586,7 @@ class CodeTantraPlaywrightAutomation:
     #         root.destroy()
     #         
     #     except Exception as e:
-    #         print(f"⚠ Could not show popup: {e}")
+    #         print(f"[WARN] Could not show popup: {e}")
     #         print("\n" + "="*60)
     #         print("🎉 UNIT COMPLETED!")
     #         print("="*60)
@@ -557,13 +601,13 @@ class CodeTantraPlaywrightAutomation:
             # Find and click the div with role="button" that contains the question
             question_div = iframe.locator('div[role="button"]').first
             await question_div.click()
-            print(f"    ✓ Clicked module question")
+            print(f"    [OK] Clicked module question")
             
             # Wait for page to load
             await page.wait_for_timeout(1000)
             
         except Exception as e:
-            print(f"    ⚠ Could not click module question: {e}")
+            print(f"    [WARN] Could not click module question: {e}")
         
     async def detect_question_type(self, page):
         """Detect the type of question on the page"""
@@ -590,7 +634,7 @@ class CodeTantraPlaywrightAutomation:
             return "unknown"
             
         except Exception as e:
-            print(f"⚠ Error detecting question type: {e}")
+            print(f"[WARN] Error detecting question type: {e}")
             return "unknown"
     
     async def detect_code_completion_type(self):
@@ -606,9 +650,9 @@ class CodeTantraPlaywrightAutomation:
             
             try:
                 await reset_button.wait_for(state="visible", timeout=5000)
-                print("  ✓ RESET button found")
+                print("  [OK] RESET button found")
             except Exception as e:
-                print(f"  ⚠ RESET button not found - assuming Type 1")
+                print(f"  [WARN] RESET button not found - assuming Type 1")
                 return {"type": "type1", "static_lines": []}
             
             # Step 2: Click RESET
@@ -649,16 +693,16 @@ class CodeTantraPlaywrightAutomation:
             
             # Step 5: Determine type
             if len(static_lines) == 0:
-                print("  ✓ TYPE 1: Fully editable (no static lines)")
+                print("  [OK] TYPE 1: Fully editable (no static lines)")
                 return {"type": "type1", "static_lines": []}
             else:
-                print(f"  ✓ TYPE 2: Has {len(static_lines)} static lines")
+                print(f"  [OK] TYPE 2: Has {len(static_lines)} static lines")
                 for sl in static_lines:
                     print(f"    Static line {sl['line_number']}: {repr(sl['stripped'])}")
                 return {"type": "type2", "static_lines": static_lines}
             
         except Exception as e:
-            print(f"⚠ Error detecting code type: {e}")
+            print(f"[WARN] Error detecting code type: {e}")
             return {"type": "type1", "static_lines": []}
     
     async def extract_all_lines_from_answers(self):
@@ -685,7 +729,7 @@ class CodeTantraPlaywrightAutomation:
             line_count = await lines.count()
             
             if line_count == 0:
-                print("⚠ No code lines found in answers editor")
+                print("[WARN] No code lines found in answers editor")
                 return None
             
             structured_lines = []
@@ -702,18 +746,18 @@ class CodeTantraPlaywrightAutomation:
                         'stripped': line_text.strip()
                     })
                 except Exception as line_error:
-                    print(f"⚠ Error extracting line {i}: {line_error}")
+                    print(f"[WARN] Error extracting line {i}: {line_error}")
                     structured_lines.append({
                         'line_number': i,
                         'text': "",
                         'stripped': ""
                     })
             
-            print(f"✓ Extracted {len(structured_lines)} structured lines from answers")
+            print(f"[OK] Extracted {len(structured_lines)} structured lines from answers")
             return structured_lines
             
         except Exception as e:
-            print(f"⚠ Could not extract structured lines: {e}")
+            print(f"[WARN] Could not extract structured lines: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -738,7 +782,7 @@ class CodeTantraPlaywrightAutomation:
             line_count = await lines.count()
             
             if line_count == 0:
-                print("⚠ No code lines found in editor")
+                print("[WARN] No code lines found in editor")
                 return None
             
             code_text = []
@@ -750,7 +794,7 @@ class CodeTantraPlaywrightAutomation:
                         line_text = ""
                     code_text.append(line_text)
                 except Exception as line_error:
-                    print(f"⚠ Error extracting line {i}: {line_error}")
+                    print(f"[WARN] Error extracting line {i}: {line_error}")
                     code_text.append("")  # Add empty line to maintain structure
             
             full_code = "\n".join(code_text)
@@ -758,12 +802,12 @@ class CodeTantraPlaywrightAutomation:
             # Clean up the code (remove extra whitespace but preserve structure)
             cleaned_code = "\n".join(line.rstrip() for line in full_code.split('\n'))
             
-            print(f"✓ Extracted {len(code_text)} lines of code")
-            print(f"✓ Code preview: {cleaned_code[:100]}{'...' if len(cleaned_code) > 100 else ''}")
+            print(f"[OK] Extracted {len(code_text)} lines of code")
+            print(f"[OK] Code preview: {cleaned_code[:100]}{'...' if len(cleaned_code) > 100 else ''}")
             return cleaned_code
             
         except Exception as e:
-            print(f"⚠ Could not extract code: {e}")
+            print(f"[WARN] Could not extract code: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -781,7 +825,7 @@ class CodeTantraPlaywrightAutomation:
             has_multiline_end = '*/' in full_code
             
             if not (has_multiline_start and has_multiline_end):
-                print("  ✓ No multiline comments detected - using Strategy A")
+                print("  [OK] No multiline comments detected - using Strategy A")
                 return "strategy_a"
             
             # Check if static lines are inside comments
@@ -809,14 +853,14 @@ class CodeTantraPlaywrightAutomation:
             
             # If most static lines are commented, use Strategy B
             if commented_static_count >= len(static_lines) * 0.7:  # 70% threshold
-                print(f"  ✓ {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy B")
+                print(f"  [OK] {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy B")
                 return "strategy_b"
             else:
-                print(f"  ✓ Only {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy A")
+                print(f"  [OK] Only {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy A")
                 return "strategy_a"
             
         except Exception as e:
-            print(f"⚠ Error detecting strategy: {e}")
+            print(f"[WARN] Error detecting strategy: {e}")
             return "strategy_a"
     
     def compare_and_find_extra_code(self, answers_lines, static_lines):
@@ -850,11 +894,11 @@ class CodeTantraPlaywrightAutomation:
                     extra_code.append(ans_line)
                     print(f"  Extra code line {ans_line['line_number']}: {repr(text)}")
             
-            print(f"✓ Found {len(extra_code)} extra code lines")
+            print(f"[OK] Found {len(extra_code)} extra code lines")
             return extra_code
             
         except Exception as e:
-            print(f"⚠ Error comparing lines: {e}")
+            print(f"[WARN] Error comparing lines: {e}")
             return []
             
     async def paste_code_to_target(self, code):
@@ -863,7 +907,7 @@ class CodeTantraPlaywrightAutomation:
             print("Pasting code to target account...")
             
             if not code or not code.strip():
-                print("⚠ No code to paste")
+                print("[WARN] No code to paste")
                 return False
             
             # Detect language and clean the code using comment remover
@@ -872,10 +916,10 @@ class CodeTantraPlaywrightAutomation:
             print("  Cleaning code using comment remover...")
             try:
                 cleaned_code = self.comment_remover.process_text(code, detected_lang)
-                print(f"  ✓ Code cleaned - removed comments")
+                print(f"  [OK] Code cleaned - removed comments")
                 code = cleaned_code
             except Exception as e:
-                print(f"  ⚠ Comment removal failed: {e}, using original code")
+                print(f"  [WARN] Comment removal failed: {e}, using original code")
             
             # First, maximize and zoom the target page for better code visibility
             await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
@@ -922,13 +966,13 @@ class CodeTantraPlaywrightAutomation:
                 # Verify paste was successful
                 pasted_content = await editor.text_content()
                 if pasted_content and len(pasted_content.strip()) > 0:
-                    print("✓ Code pasted successfully via clipboard")
+                    print("[OK] Code pasted successfully via clipboard")
                     return True
                 else:
-                    print("⚠ Clipboard paste failed, trying line-by-line...")
+                    print("[WARN] Clipboard paste failed, trying line-by-line...")
                     
             except Exception as clipboard_error:
-                print(f"⚠ Clipboard paste failed: {clipboard_error}")
+                print(f"[WARN] Clipboard paste failed: {clipboard_error}")
                 print("  Trying line-by-line method...")
             
             # Method 2: Line-by-line typing with better error handling
@@ -942,16 +986,16 @@ class CodeTantraPlaywrightAutomation:
                     try:
                         # Use the safer typing method
                         await self.type_code_safely(editor, line, delay=20)
-                        print(f"  ✓ Line {i+1} typed successfully")
+                        print(f"  [OK] Line {i+1} typed successfully")
                     except Exception as e:
-                        print(f"  ⚠ Error typing line {i+1}: {e}")
+                        print(f"  [WARN] Error typing line {i+1}: {e}")
                         # Try simple typing as fallback
                         try:
                             print(f"  Retrying line {i+1} with simple typing...")
                             await editor.type(line, delay=30)
-                            print(f"  ✓ Line {i+1} typed with fallback method")
+                            print(f"  [OK] Line {i+1} typed with fallback method")
                         except Exception as e2:
-                            print(f"  ✗ Failed to type line {i+1}: {e2}")
+                            print(f"  [FAIL] Failed to type line {i+1}: {e2}")
                             continue
                 else:
                     print(f"  Skipping empty line {i+1}")
@@ -968,15 +1012,15 @@ class CodeTantraPlaywrightAutomation:
             pasted_content = await editor.text_content()
             
             if pasted_content and len(pasted_content.strip()) > 0:
-                print(f"✓ Code pasted successfully ({len(lines)} lines)")
-                print(f"✓ Paste verification: {pasted_content[:100]}{'...' if len(pasted_content) > 100 else ''}")
+                print(f"[OK] Code pasted successfully ({len(lines)} lines)")
+                print(f"[OK] Paste verification: {pasted_content[:100]}{'...' if len(pasted_content) > 100 else ''}")
                 return True
             else:
-                print("⚠ Paste verification failed - no content detected")
+                print("[WARN] Paste verification failed - no content detected")
                 return False
             
         except Exception as e:
-            print(f"⚠ Error pasting code: {e}")
+            print(f"[WARN] Error pasting code: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -1007,7 +1051,7 @@ class CodeTantraPlaywrightAutomation:
             return answers
             
         except Exception as e:
-            print(f"⚠ Error getting selected answers: {e}")
+            print(f"[WARN] Error getting selected answers: {e}")
             return []
     
     async def select_answers_on_target(self, answers):
@@ -1036,13 +1080,13 @@ class CodeTantraPlaywrightAutomation:
                 # Check if this option should be selected
                 if any(answer in label_text for answer in answers):
                     await option.check()
-                    print(f"  ✓ Selected: {label_text}")
+                    print(f"  [OK] Selected: {label_text}")
             
-            print("✓ Answers selected successfully")
+            print("[OK] Answers selected successfully")
             return True
             
         except Exception as e:
-            print(f"⚠ Error selecting answers: {e}")
+            print(f"[WARN] Error selecting answers: {e}")
             return False
     
     async def type_code_safely(self, editor, text, delay=10):
@@ -1065,12 +1109,12 @@ class CodeTantraPlaywrightAutomation:
                             continue
                             
                 except Exception as e:
-                    print(f"    ⚠ Error typing character '{char}' at position {i}: {e}")
+                    print(f"    [WARN] Error typing character '{char}' at position {i}: {e}")
                     # Continue with next character
                     continue
                     
         except Exception as e:
-            print(f"  ⚠ Error in type_code_safely: {e}")
+            print(f"  [WARN] Error in type_code_safely: {e}")
             raise
     
     async def type_code_with_auto_close_handling(self, editor, text, delay=5):
@@ -1126,10 +1170,10 @@ class CodeTantraPlaywrightAutomation:
                 await editor.press("Delete")
                 await self.page_target.wait_for_timeout(50)  # Small delay between presses
             
-            print("  ✓ Cleanup complete (5 seconds of Delete)")
+            print("  [OK] Cleanup complete (5 seconds of Delete)")
             
         except Exception as e:
-            print(f"  ⚠ Cleanup failed: {e}")
+            print(f"  [WARN] Cleanup failed: {e}")
     
     
     def extract_uncommented_code_from_answers(self, answers_lines):
@@ -1184,13 +1228,13 @@ class CodeTantraPlaywrightAutomation:
             # Select all existing content (static lines)
             await editor.press("Control+a")
             await self.page_target.wait_for_timeout(500)
-            print("  ✓ Selected all static lines")
+            print("  [OK] Selected all static lines")
             
             # Step 2: Comment everything using Ctrl+/
             print("  Commenting all lines with Ctrl+/...")
             await editor.press("Control+/")
             await self.page_target.wait_for_timeout(800)
-            print("  ✓ All lines commented with //")
+            print("  [OK] All lines commented with //")
             
             # Step 3: Move to end and add 3 new lines
             print("  Moving to end and adding 3 new lines...")
@@ -1204,14 +1248,14 @@ class CodeTantraPlaywrightAutomation:
             await self.page_target.wait_for_timeout(100)
             await editor.press("Enter")
             await self.page_target.wait_for_timeout(100)
-            print("  ✓ Added 3 new lines for code placement")
+            print("  [OK] Added 3 new lines for code placement")
             
             # Step 4: Build complete code from answers and clean it
             print("  Building complete code from answers...")
             complete_code = "\n".join(line['text'] for line in answers_lines)
             
             if not complete_code.strip():
-                print("  ⚠ No code found in answers")
+                print("  [WARN] No code found in answers")
                 return False
             
             # Step 5: Detect language and clean the code using comment remover
@@ -1220,9 +1264,9 @@ class CodeTantraPlaywrightAutomation:
             print("  Cleaning code using comment remover...")
             try:
                 cleaned_code = self.comment_remover.process_text(complete_code, detected_lang)
-                print(f"  ✓ Code cleaned - removed comments")
+                print(f"  [OK] Code cleaned - removed comments")
             except Exception as e:
-                print(f"  ⚠ Comment removal failed: {e}, using original code")
+                print(f"  [WARN] Comment removal failed: {e}, using original code")
                 cleaned_code = complete_code
             
             print(f"  Ready to type {len(cleaned_code.split(chr(10)))} lines of clean code")
@@ -1238,16 +1282,16 @@ class CodeTantraPlaywrightAutomation:
                     try:
                         # Type with moderate speed for reliability
                         await self.type_code_safely(editor, line, delay=10)
-                        print(f"  ✓ Line {i+1} typed successfully")
+                        print(f"  [OK] Line {i+1} typed successfully")
                     except Exception as e:
-                        print(f"  ⚠ Error typing line {i+1}: {e}")
+                        print(f"  [WARN] Error typing line {i+1}: {e}")
                         # Try simple typing as fallback
                         try:
                             print(f"  Retrying line {i+1} with simple typing...")
                             await editor.type(line, delay=20)
-                            print(f"  ✓ Line {i+1} typed with fallback method")
+                            print(f"  [OK] Line {i+1} typed with fallback method")
                         except Exception as e2:
-                            print(f"  ✗ Failed to type line {i+1}: {e2}")
+                            print(f"  [FAIL] Failed to type line {i+1}: {e2}")
                             continue
                 else:
                     print(f"  Skipping empty line {i+1}")
@@ -1255,25 +1299,25 @@ class CodeTantraPlaywrightAutomation:
                 if i < len(lines) - 1:
                     await editor.press("Enter")
                     await self.page_target.wait_for_timeout(50)  # Slightly slower for reliability
-            print("  ✓ All code typed successfully")
+            print("  [OK] All code typed successfully")
             
             # Verify what was actually typed
             try:
                 actual_content = await editor.text_content()
                 print(f"  Verification: {len(actual_content)} characters typed")
                 if len(actual_content) < len(cleaned_code) * 0.8:  # If less than 80% of expected
-                    print(f"  ⚠ Warning: Only {len(actual_content)} chars typed, expected ~{len(cleaned_code)}")
+                    print(f"  [WARN] Warning: Only {len(actual_content)} chars typed, expected ~{len(cleaned_code)}")
                     print(f"  First 100 chars: {actual_content[:100]}")
                 else:
-                    print(f"  ✓ Verification passed: {len(actual_content)} characters")
+                    print(f"  [OK] Verification passed: {len(actual_content)} characters")
             except Exception as e:
-                print(f"  ⚠ Could not verify typed content: {e}")
+                print(f"  [WARN] Could not verify typed content: {e}")
             
-            print("✓ Strategy B: Code typed successfully")
+            print("[OK] Strategy B: Code typed successfully")
             return True
             
         except Exception as e:
-            print(f"✗ Strategy B failed: {e}")
+            print(f"[FAIL] Strategy B failed: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -1292,7 +1336,7 @@ class CodeTantraPlaywrightAutomation:
             try:
                 hidden_success = iframe.get_by_text("out of 1 hidden test case(s) passed")
                 await hidden_success.wait_for(state="visible", timeout=5000)
-                print("✓ SUCCESS: 'out of 1 hidden test case(s) passed' found!")
+                print("[OK] SUCCESS: 'out of 1 hidden test case(s) passed' found!")
                 return True
             except:
                 pass
@@ -1301,7 +1345,7 @@ class CodeTantraPlaywrightAutomation:
             try:
                 shown_success = iframe.get_by_text("out of 2 shown test case(s) passed")
                 await shown_success.wait_for(state="visible", timeout=5000)
-                print("✓ SUCCESS: 'out of 2 shown test case(s) passed' found!")
+                print("[OK] SUCCESS: 'out of 2 shown test case(s) passed' found!")
                 return True
             except:
                 pass
@@ -1311,7 +1355,7 @@ class CodeTantraPlaywrightAutomation:
                 # Look for any pattern like "out of X test case(s) passed"
                 test_success = iframe.get_by_text("test case(s) passed", exact=False)
                 await test_success.wait_for(state="visible", timeout=3000)
-                print("✓ SUCCESS: Test case success message found!")
+                print("[OK] SUCCESS: Test case success message found!")
                 return True
             except:
                 pass
@@ -1320,7 +1364,7 @@ class CodeTantraPlaywrightAutomation:
             try:
                 success_text = iframe.get_by_text("Test case passed successfully")
                 await success_text.wait_for(state="visible", timeout=3000)
-                print("✓ SUCCESS: 'Test case passed successfully' found!")
+                print("[OK] SUCCESS: 'Test case passed successfully' found!")
                 return True
             except:
                 pass
@@ -1330,16 +1374,16 @@ class CodeTantraPlaywrightAutomation:
                 badge = iframe.locator("div.badge.badge-secondary.badge-sm.badge-success")
                 await badge.wait_for(timeout=2000)
                 badge_text = await badge.text_content()
-                print(f"✓ SUCCESS: Badge found with text: {badge_text}")
+                print(f"[OK] SUCCESS: Badge found with text: {badge_text}")
                 return True
             except:
                 pass
             
-            print("✗ FAILED: No test case success indicators found")
+            print("[FAIL] FAILED: No test case success indicators found")
             return False
             
         except Exception as e:
-            print(f"⚠ Could not verify submission: {e}")
+            print(f"[WARN] Could not verify submission: {e}")
             return False
     
     async def handle_type2_code_completion(self):
@@ -1352,7 +1396,7 @@ class CodeTantraPlaywrightAutomation:
             type_info = await self.detect_code_completion_type()
             
             if type_info['type'] == 'type1':
-                print("⚠ False alarm - This is actually Type 1")
+                print("[WARN] False alarm - This is actually Type 1")
                 # Fall back to Type 1 handling
                 code = await self.get_code_from_answers()
                 if code:
@@ -1364,7 +1408,7 @@ class CodeTantraPlaywrightAutomation:
             # Step 2: Extract structured lines from answers
             answers_lines = await self.extract_all_lines_from_answers()
             if not answers_lines:
-                print("✗ Failed to extract lines from answers")
+                print("[FAIL] Failed to extract lines from answers")
                 return False
             
             # Step 3: Use Strategy B - Comment static lines then paste complete code
@@ -1372,14 +1416,14 @@ class CodeTantraPlaywrightAutomation:
             success = await self.paste_code_strategy_b(answers_lines, static_lines)
             
             if success:
-                print("✓ Type 2 code pasted successfully!")
+                print("[OK] Type 2 code pasted successfully!")
             else:
-                print("✗ Type 2 code paste failed")
+                print("[FAIL] Type 2 code paste failed")
             
             return success
             
         except Exception as e:
-            print(f"✗ Type 2 handling failed: {e}")
+            print(f"[FAIL] Type 2 handling failed: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -1392,7 +1436,7 @@ class CodeTantraPlaywrightAutomation:
             print(f"Question type detected: {question_type}")
             
             if question_type == "code_completion":
-                print("✓ Code completion question detected")
+                print("[OK] Code completion question detected")
                 
                 # Detect if Type 1 or Type 2
                 type_info = await self.detect_code_completion_type()
@@ -1402,36 +1446,36 @@ class CodeTantraPlaywrightAutomation:
                     return await self.handle_type2_code_completion()
                 else:
                     # Handle Type 1 (simple copy-paste)
-                    print("✓ TYPE 1: Simple copy-paste")
+                    print("[OK] TYPE 1: Simple copy-paste")
                     code = await self.get_code_from_answers()
                     if not code:
-                        print("⚠ No code found in answers account")
+                        print("[WARN] No code found in answers account")
                         return False
                     
                     paste_success = await self.paste_code_to_target(code)
                     if paste_success:
-                        print("✓ Code copied and pasted successfully!")
+                        print("[OK] Code copied and pasted successfully!")
                         return True
                     else:
-                        print("⚠ Failed to paste code to target account")
+                        print("[WARN] Failed to paste code to target account")
                         return False
                     
             elif question_type in ["single_choice", "multiple_choice"]:
                 # Handle multiple choice questions
                 answers = await self.get_selected_answers(self.page_answers)
                 if answers:
-                    print(f"✓ Found {len(answers)} selected answers: {answers}")
+                    print(f"[OK] Found {len(answers)} selected answers: {answers}")
                     return await self.select_answers_on_target(answers)
                 else:
-                    print("⚠ No answers found on answers account")
+                    print("[WARN] No answers found on answers account")
                     return False
                     
             else:
-                print("⚠ Unknown question type - SKIPPING")
+                print("[WARN] Unknown question type - SKIPPING")
                 return "skip"  # Skip unknown question types
                 
         except Exception as e:
-            print(f"⚠ Error handling question: {e}")
+            print(f"[WARN] Error handling question: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -1461,9 +1505,9 @@ class CodeTantraPlaywrightAutomation:
                 try:
                     submit_button = iframe.locator("[id=\"__ss-content-actions\"]").get_by_role("button", name="Submit")
                     await submit_button.wait_for(state="visible", timeout=30000)  # 30 second timeout
-                    print("  ✓ Submit button found")
+                    print("  [OK] Submit button found")
                 except Exception as e:
-                    print(f"  ⚠ Submit button not found within 30 seconds: {e}")
+                    print(f"  [WARN] Submit button not found within 30 seconds: {e}")
                     if attempt < 2:  # Not the last attempt
                         print("  Retrying with more cleanup...")
                         continue
@@ -1472,7 +1516,7 @@ class CodeTantraPlaywrightAutomation:
                 # Step 3: Click the submit button
                 await submit_button.scroll_into_view_if_needed()
                 await submit_button.click()
-                print("✓ Submit button clicked")
+                print("[OK] Submit button clicked")
                 
                 # Step 4: Wait for submission to process
                 print("  Waiting for submission to process...")
@@ -1481,23 +1525,23 @@ class CodeTantraPlaywrightAutomation:
                 # Step 5: Check if submission was successful
                 success = await self.check_submission_success()
                 if success:
-                    print("✓ Submission successful!")
+                    print("[OK] Submission successful!")
                     return True
                 else:
-                    print("⚠ Submission failed, retrying with more cleanup...")
+                    print("[WARN] Submission failed, retrying with more cleanup...")
                     if attempt < 2:  # Not the last attempt
                         # Move to end and clean up more
                         await editor.press("Control+End")
                         await self.page_target.wait_for_timeout(200)
                         continue
                     else:
-                        print("✗ All submission attempts failed")
+                        print("[FAIL] All submission attempts failed")
                         return False
             
             return False
             
         except Exception as e:
-            print(f"⚠ Could not find or click Submit button: {e}")
+            print(f"[WARN] Could not find or click Submit button: {e}")
             return False
             
     async def check_submission_success(self):
@@ -1507,7 +1551,7 @@ class CodeTantraPlaywrightAutomation:
             return await self.verify_submission_with_test_case()
             
         except Exception as e:
-            print(f"⚠ Submission verification error: {e}")
+            print(f"[WARN] Submission verification error: {e}")
             return False
             
     async def move_to_next_problem(self):
@@ -1520,14 +1564,14 @@ class CodeTantraPlaywrightAutomation:
             next_answers = iframe_answers.get_by_role("button", name="Next")
             await next_answers.scroll_into_view_if_needed()
             await next_answers.click()
-            print("  ✓ Clicked Next on answers account")
+            print("  [OK] Clicked Next on answers account")
             
             # Click Next on target account
             iframe_target = self.page_target.frame_locator("#course-iframe")
             next_target = iframe_target.get_by_role("button", name="Next")
             await next_target.scroll_into_view_if_needed()
             await next_target.click()
-            print("  ✓ Clicked Next on target account")
+            print("  [OK] Clicked Next on target account")
             
             # Wait for both pages to load and verify they match
             print("  Waiting for pages to load...")
@@ -1535,14 +1579,14 @@ class CodeTantraPlaywrightAutomation:
             
             # Verify both are on the same problem
             if await self.check_problems_match():
-                print("✓ Both accounts moved to the same next problem\n")
+                print("[OK] Both accounts moved to the same next problem\n")
                 return True
             else:
-                print("⚠ WARNING: Accounts are on different problems after clicking Next!")
+                print("[WARN] WARNING: Accounts are on different problems after clicking Next!")
                 return False
             
         except Exception as e:
-            print(f"⚠ Could not find Next button: {e}")
+            print(f"[WARN] Could not find Next button: {e}")
             return False
             
     async def process_single_problem(self):
@@ -1556,16 +1600,16 @@ class CodeTantraPlaywrightAutomation:
         
         # Verify both are on same problem
         if not await self.check_problems_match():
-            print("⚠ Problems don't match - skipping")
+            print("[WARN] Problems don't match - skipping")
             error_msg = "Problems don't match between accounts"
             self.error_log.append({
                 'problem': current_problem or "Unknown",
                 'error': error_msg
             })
-            print(f"✗ ERROR: {error_msg}")
+            print(f"[FAIL] ERROR: {error_msg}")
             return False
         
-        print("✓ Problem verified - processing answer...")
+        print("[OK] Problem verified - processing answer...")
         
         # Detect question type for appropriate handling
         question_type = await self.detect_question_type(self.page_answers)
@@ -1576,11 +1620,11 @@ class CodeTantraPlaywrightAutomation:
             result = await self.handle_question_answer()
             
             if result == "skip":
-                print("✓ Question skipped - moving to next")
+                print("[OK] Question skipped - moving to next")
                 return "skipped"  # Special return value for skipped questions
                 
             elif result == True:
-                print("✓ Answer processed successfully")
+                print("[OK] Answer processed successfully")
                 
                 # Submit the solution
                 print("  Attempting to submit...")
@@ -1588,14 +1632,14 @@ class CodeTantraPlaywrightAutomation:
                     submit_success = await self.submit_solution(question_type)
                     
                     if submit_success:
-                        print("✓ Solution submitted")
+                        print("[OK] Solution submitted")
                         # For code completion: verify with test cases
                         if question_type == "code_completion":
                             if await self.check_submission_success():
-                                print("✓ Submission successful!")
+                                print("[OK] Submission successful!")
                                 return True
                             else:
-                                print("⚠ Submission verification failed - skipping problem")
+                                print("[WARN] Submission verification failed - skipping problem")
                                 self.error_log.append({
                                     'problem': current_problem or "Unknown",
                                     'error': "Submission verification failed - test case not passed"
@@ -1603,31 +1647,31 @@ class CodeTantraPlaywrightAutomation:
                                 return "skipped"
                         else:
                             # For non-code questions: just wait a moment and proceed
-                            print("✓ Non-code question submitted - proceeding to next...")
+                            print("[OK] Non-code question submitted - proceeding to next...")
                             await self.page_target.wait_for_timeout(2000)  # Wait 2 seconds
                             return True
                     else:
-                        print("⚠ Submit failed - skipping problem")
+                        print("[WARN] Submit failed - skipping problem")
                         self.error_log.append({
                             'problem': current_problem or "Unknown",
                             'error': "Submit button not found"
                         })
                         return "skipped"
                 except Exception as e:
-                    print(f"⚠ Error during submission: {e} - skipping problem")
+                    print(f"[WARN] Error during submission: {e} - skipping problem")
                     self.error_log.append({
                         'problem': current_problem or "Unknown",
                         'error': f"Submission error: {str(e)}"
                     })
                     return "skipped"
             else:
-                print("⚠ Failed to process answer - skipping problem")
+                print("[WARN] Failed to process answer - skipping problem")
                 error_msg = "Failed to process answer"
                 self.error_log.append({
                     'problem': current_problem or "Unknown",
                     'error': error_msg
                 })
-                print(f"✗ ERROR: {error_msg}")
+                print(f"[FAIL] ERROR: {error_msg}")
                 return False
                 
         except Exception as e:
@@ -1636,15 +1680,20 @@ class CodeTantraPlaywrightAutomation:
                 'problem': current_problem or "Unknown",
                 'error': error_msg
             })
-            print(f"✗ ERROR: {error_msg}")
+            print(f"[FAIL] ERROR: {error_msg}")
             import traceback
             traceback.print_exc()
             return False
         
-    async def run_automation(self, num_problems=None):
+    async def run_automation(self, num_problems=None, endless_mode=False):
         """Main automation loop"""
         print("\n" + "="*60)
-        print("STARTING AUTOMATION - FULL MODE")
+        if endless_mode:
+            print("STARTING AUTOMATION - ENDLESS MODE")
+            print("(Will solve ALL available problems)")
+        else:
+            print("STARTING AUTOMATION - FULL MODE")
+            print(f"(Will solve {num_problems or 'all available'} problems)")
         print("(Copy/paste ENABLED - full automation active)")
         print("="*60)
         
@@ -1652,58 +1701,62 @@ class CodeTantraPlaywrightAutomation:
         print("\nInitial problem check:")
         if not await self.check_problems_match():
             print("\n" + "="*60)
-            print("⚠ WARNING: Accounts are on DIFFERENT problems!")
+            print("[WARN] WARNING: Accounts are on DIFFERENT problems!")
             print("="*60)
             print("Please manually navigate both accounts to the SAME problem.")
             input("Press ENTER when ready...")
             
             # Re-check
             if not await self.check_problems_match():
-                print("✗ Still different. Exiting.")
+                print("[FAIL] Still different. Exiting.")
                 return
         
-        print("✓ Both accounts on same problem - starting...")
+        print("[OK] Both accounts on same problem - starting...")
         
-        problems_completed = 0
-        problems_failed = 0
-        problems_skipped = 0
+        # Reset counters
+        self.problems_solved = 0
+        self.problems_failed = 0
+        self.problems_skipped = 0
         
         try:
             while True:
-                if num_problems and problems_completed >= num_problems:
-                    print(f"\n✓ Completed {num_problems} problems as requested")
+                if not endless_mode and num_problems and self.problems_solved >= num_problems:
+                    print(f"\n[OK] Completed {num_problems} problems as requested")
                     break
+                    
+                if endless_mode:
+                    print(f"\n[LOOP] Endless mode - Problem {self.problems_solved + 1}...")
                     
                 # Process current problem
                 result = await self.process_single_problem()
                 
                 if result == True:
-                    problems_completed += 1
-                    print(f"\n✓ Problem {problems_completed} completed successfully!")
+                    self.problems_solved += 1
+                    print(f"\n[OK] Problem {self.problems_solved} completed successfully!")
                 elif result == "skipped":
-                    problems_skipped += 1
-                    print(f"\n✓ Problem skipped (Total skipped: {problems_skipped})")
+                    self.problems_skipped += 1
+                    print(f"\n[OK] Problem skipped (Total skipped: {self.problems_skipped})")
                 else:
-                    problems_failed += 1
-                    print(f"\n⚠ Problem failed (Total failures: {problems_failed})")
+                    self.problems_failed += 1
+                    print(f"\n[WARN] Problem failed (Total failures: {self.problems_failed})")
                     
                 # Move to next
                 if not await self.move_to_next_problem():
-                    print("\n✓ Reached end of problems")
+                    print("\n[OK] Reached end of problems")
                     break
                     
                 # Small pause between problems
                 await asyncio.sleep(2)
                 
         except KeyboardInterrupt:
-            print("\n\n⚠ Automation stopped by user")
+            print("\n\n[WARN] Automation stopped by user")
             
         print("\n" + "="*60)
         print("AUTOMATION COMPLETE - FINAL REPORT")
         print("="*60)
-        print(f"✓ Problems Solved: {problems_completed}")
-        print(f"⊘ Problems Skipped: {problems_skipped}")
-        print(f"✗ Problems Failed: {problems_failed}")
+        print(f"[OK] Problems Solved: {self.problems_solved}")
+        print(f"⊘ Problems Skipped: {self.problems_skipped}")
+        print(f"[FAIL] Problems Failed: {self.problems_failed}")
         print("="*60)
         
         # Show detailed error log if there were failures
@@ -1721,7 +1774,7 @@ class CodeTantraPlaywrightAutomation:
     async def cleanup(self):
         """Keep browsers open"""
         print("\nKeeping browsers open...")
-        print("✓ Browsers will remain open for manual use")
+        print("[OK] Browsers will remain open for manual use")
 
 
 async def main():
@@ -1753,9 +1806,9 @@ async def main():
                     ANSWERS_ACCOUNT['password'],
                     "Answers Account"
                 ):
-                    print("\n✓ Answers account ready")
+                    print("\n[OK] Answers account ready")
                 else:
-                    print("\n⚠ Answers account login may have failed. Check credentials.")
+                    print("\n[WARN] Answers account login may have failed. Check credentials.")
                     
                 # Login to target account
                 if await automation.login_to_account(
@@ -1764,9 +1817,9 @@ async def main():
                     TARGET_ACCOUNT['password'],
                     "Target Account"
                 ):
-                    print("\n✓ Target account ready")
+                    print("\n[OK] Target account ready")
                 else:
-                    print("\n⚠ Target account login may have failed. Check credentials.")
+                    print("\n[WARN] Target account login may have failed. Check credentials.")
                     
                 print("\n" + "="*60)
                 print("Please navigate both accounts to the problems section")
@@ -1794,7 +1847,7 @@ async def main():
             await automation.run_automation(num_problems)
             
         except Exception as e:
-            print(f"\n✗ Error: {e}")
+            print(f"\n[FAIL] Error: {e}")
             import traceback
             traceback.print_exc()
             

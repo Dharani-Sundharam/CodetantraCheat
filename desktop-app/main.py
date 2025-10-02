@@ -130,17 +130,35 @@ class CodeTantraApp:
             fg=self.fg_color
         ).pack(anchor="w", pady=(0, 5))
         
+        # Password frame for entry and view button
+        password_frame = tk.Frame(main_frame, bg=self.bg_color)
+        password_frame.pack(pady=(0, 10))
+        
         self.password_entry = tk.Entry(
-            main_frame,
+            password_frame,
             font=("Arial", 11),
             bg=self.entry_bg,
             fg=self.fg_color,
             insertbackground=self.fg_color,
             relief=tk.FLAT,
-            width=35,
+            width=30,
             show="*"
         )
-        self.password_entry.pack(pady=(0, 10), ipady=8)
+        self.password_entry.pack(side=tk.LEFT, ipady=8)
+        
+        # View password button
+        self.show_password = tk.BooleanVar()
+        self.view_password_btn = tk.Button(
+            password_frame,
+            text="Show",
+            font=("Arial", 8),
+            bg=self.entry_bg,
+            fg=self.fg_color,
+            relief=tk.FLAT,
+            width=4,
+            command=self.toggle_password_visibility
+        )
+        self.view_password_btn.pack(side=tk.LEFT, padx=(5, 0), ipady=8)
         
         # Remember me
         self.remember_var = tk.BooleanVar()
@@ -183,6 +201,26 @@ class CodeTantraApp:
         
         # Bind enter key
         self.password_entry.bind('<Return>', lambda e: self.handle_login())
+    
+    def toggle_password_visibility(self):
+        """Toggle password visibility"""
+        if self.show_password.get():
+            self.password_entry.config(show="")
+            self.view_password_btn.config(text="Hide")
+        else:
+            self.password_entry.config(show="*")
+            self.view_password_btn.config(text="Show")
+        self.show_password.set(not self.show_password.get())
+    
+    def toggle_target_password_visibility(self):
+        """Toggle target password visibility"""
+        if self.show_target_password.get():
+            self.target_password.config(show="")
+            self.view_target_password_btn.config(text="Hide")
+        else:
+            self.target_password.config(show="*")
+            self.view_target_password_btn.config(text="Show")
+        self.show_target_password.set(not self.show_target_password.get())
     
     def handle_login(self):
         """Handle login button click"""
@@ -337,7 +375,33 @@ class CodeTantraApp:
             cursor="hand2",
             command=self.start_automation
         )
-        self.start_btn.pack(fill=tk.X, padx=15, pady=(0, 15), ipady=10)
+        self.start_btn.pack(fill=tk.X, padx=15, pady=(0, 10), ipady=10)
+        
+        # Endless mode button
+        self.endless_btn = tk.Button(
+            right_panel,
+            text="Endless Mode",
+            font=("Arial", 12, "bold"),
+            bg="#10b981",
+            fg="white",
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self.start_endless_mode
+        )
+        self.endless_btn.pack(fill=tk.X, padx=15, pady=(0, 10), ipady=10)
+        
+        # Test browser button
+        self.test_browser_btn = tk.Button(
+            right_panel,
+            text="Test Browser",
+            font=("Arial", 10),
+            bg="#6b7280",
+            fg="white",
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self.test_browser
+        )
+        self.test_browser_btn.pack(fill=tk.X, padx=15, pady=(0, 15), ipady=8)
     
     def create_config_fields(self, parent):
         """Create configuration input fields"""
@@ -437,8 +501,12 @@ class CodeTantraApp:
             fg=self.fg_color
         ).pack(anchor="w", pady=(0, 5))
         
+        # Target password frame
+        target_password_frame = tk.Frame(fields_frame, bg=self.frame_bg)
+        target_password_frame.pack(fill=tk.X, pady=(0, 15))
+        
         self.target_password = tk.Entry(
-            fields_frame,
+            target_password_frame,
             font=("Arial", 10),
             bg=self.entry_bg,
             fg=self.fg_color,
@@ -446,8 +514,22 @@ class CodeTantraApp:
             relief=tk.FLAT,
             show="*"
         )
-        self.target_password.pack(fill=tk.X, pady=(0, 15), ipady=6)
+        self.target_password.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6)
         self.target_password.insert(0, config.get('target_password', ''))
+        
+        # View target password button
+        self.show_target_password = tk.BooleanVar()
+        self.view_target_password_btn = tk.Button(
+            target_password_frame,
+            text="Show",
+            font=("Arial", 8),
+            bg=self.entry_bg,
+            fg=self.fg_color,
+            relief=tk.FLAT,
+            width=4,
+            command=self.toggle_target_password_visibility
+        )
+        self.view_target_password_btn.pack(side=tk.LEFT, padx=(5, 0), ipady=6)
         
         # Number of problems
         tk.Label(
@@ -517,6 +599,56 @@ class CodeTantraApp:
         thread.daemon = True
         thread.start()
     
+    def start_endless_mode(self):
+        """Start endless mode - solve all available problems"""
+        if self.is_running:
+            messagebox.showwarning("Already Running", "Automation is already in progress")
+            return
+        
+        # Validate inputs
+        if not all([
+            self.url_entry.get(),
+            self.answers_email.get(),
+            self.answers_password.get(),
+            self.target_email.get(),
+            self.target_password.get()
+        ]):
+            messagebox.showerror("Missing Information", "Please fill in all fields")
+            return
+        
+        # Confirm endless mode
+        if not messagebox.askyesno("Endless Mode", 
+            "Endless mode will attempt to solve ALL available problems.\n"
+            "This may take a very long time and use many credits.\n"
+            "Are you sure you want to continue?"):
+            return
+        
+        # Save configuration
+        config = {
+            'url': self.url_entry.get(),
+            'answers_email': self.answers_email.get(),
+            'answers_password': self.answers_password.get(),
+            'target_email': self.target_email.get(),
+            'target_password': self.target_password.get(),
+            'num_problems': '999999',  # Very large number for endless mode
+            'endless_mode': True
+        }
+        self.config.save_automation_config(config)
+        
+        # Update UI
+        self.is_running = True
+        self.start_btn.config(text="Running...", state=tk.DISABLED, bg="#6b7280")
+        self.endless_btn.config(text="Endless Running...", state=tk.DISABLED, bg="#6b7280")
+        self.status_display.config(text="Endless Mode Running", fg="#10b981")
+        self.log_text.delete(1.0, tk.END)
+        self.log_message("Starting endless mode...")
+        self.log_message("This will attempt to solve ALL available problems!")
+        
+        # Start endless automation in thread
+        thread = threading.Thread(target=self.run_endless_automation_thread, args=(config,))
+        thread.daemon = True
+        thread.start()
+    
     def run_automation_thread(self, config):
         """Run automation in separate thread"""
         try:
@@ -536,10 +668,30 @@ class CodeTantraApp:
         except Exception as e:
             self.root.after(0, self.automation_error, str(e))
     
+    def run_endless_automation_thread(self, config):
+        """Run endless automation in separate thread"""
+        try:
+            # Create automation runner for endless mode
+            runner = automation_runner.AutomationRunner(
+                config,
+                self.api_client,
+                self.log_message
+            )
+            
+            # Run endless automation
+            result = runner.run_endless()
+            
+            # Update UI with results
+            self.root.after(0, self.show_endless_results, result)
+            
+        except Exception as e:
+            self.root.after(0, self.automation_error, str(e))
+    
     def show_results(self, result):
         """Show automation results"""
         self.is_running = False
         self.start_btn.config(text="Start Automation", state=tk.NORMAL, bg=self.button_bg)
+        self.endless_btn.config(text="Endless Mode", state=tk.NORMAL, bg="#10b981")
         self.status_display.config(text="Completed", fg="#10b981")
         
         self.log_message("\nAutomation completed!")
@@ -555,13 +707,73 @@ class CodeTantraApp:
             f"Solved: {result['solved']}\nFailed: {result['failed']}\nSkipped: {result['skipped']}"
         )
     
+    def show_endless_results(self, result):
+        """Show endless mode results"""
+        self.is_running = False
+        self.start_btn.config(text="Start Automation", state=tk.NORMAL, bg=self.button_bg)
+        self.endless_btn.config(text="Endless Mode", state=tk.NORMAL, bg="#10b981")
+        self.status_display.config(text="Endless Mode Completed", fg="#10b981")
+        
+        self.log_message("\nEndless mode completed!")
+        self.log_message(f"Total problems solved: {result['solved']}")
+        self.log_message(f"Total problems failed: {result['failed']}")
+        self.log_message(f"Total problems skipped: {result['skipped']}")
+        self.log_message(f"Total time: {result.get('duration', 'Unknown')}")
+        
+        # Update credits
+        self.refresh_credits()
+        
+        messagebox.showinfo(
+            "Endless Mode Complete",
+            f"Endless mode finished!\n\n"
+            f"Solved: {result['solved']}\n"
+            f"Failed: {result['failed']}\n"
+            f"Skipped: {result['skipped']}\n"
+            f"Duration: {result.get('duration', 'Unknown')}"
+        )
+    
     def automation_error(self, error):
         """Handle automation error"""
         self.is_running = False
         self.start_btn.config(text="Start Automation", state=tk.NORMAL, bg=self.button_bg)
+        self.endless_btn.config(text="Endless Mode", state=tk.NORMAL, bg="#10b981")
         self.status_display.config(text="Error", fg="red")
         self.log_message(f"Error: {error}")
         messagebox.showerror("Automation Error", f"An error occurred:\n{error}")
+    
+    def test_browser(self):
+        """Test Playwright browser functionality"""
+        self.log_message("Testing browser functionality...")
+        
+        def run_test():
+            try:
+                import subprocess
+                import sys
+                from pathlib import Path
+                
+                # Run the test script
+                test_script = Path(__file__).parent / "test_playwright.py"
+                result = subprocess.run([sys.executable, str(test_script)], 
+                                      capture_output=True, text=True, timeout=30)
+                
+                if result.returncode == 0:
+                    self.root.after(0, lambda: self.log_message("[SUCCESS] Browser test passed!"))
+                    self.root.after(0, lambda: messagebox.showinfo("Browser Test", "[SUCCESS] Browser test passed!\nPlaywright is working correctly."))
+                else:
+                    self.root.after(0, lambda: self.log_message(f"[FAILED] Browser test failed:\n{result.stderr}"))
+                    self.root.after(0, lambda: messagebox.showerror("Browser Test Failed", f"[FAILED] Browser test failed:\n\n{result.stderr}\n\nPlease check the troubleshooting steps in the log."))
+                    
+            except subprocess.TimeoutExpired:
+                self.root.after(0, lambda: self.log_message("[TIMEOUT] Browser test timed out"))
+                self.root.after(0, lambda: messagebox.showerror("Browser Test", "[TIMEOUT] Browser test timed out. This might indicate browser launch issues."))
+            except Exception as e:
+                self.root.after(0, lambda: self.log_message(f"[ERROR] Browser test error: {e}"))
+                self.root.after(0, lambda: messagebox.showerror("Browser Test", f"[ERROR] Browser test error:\n{e}"))
+        
+        # Run test in separate thread
+        thread = threading.Thread(target=run_test)
+        thread.daemon = True
+        thread.start()
     
     def refresh_credits(self):
         """Refresh credits display"""
