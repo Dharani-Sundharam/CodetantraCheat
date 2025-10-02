@@ -43,22 +43,21 @@ def get_db_context():
 def create_admin_user():
     """Create default admin user with unlimited credits"""
     with get_db_context() as db:
-        admin = db.query(User).filter(User.email == "admin@codetantra.local").first()
+        admin = db.query(User).filter(User.email == "admin@codetantra.ac.in").first()
         if not admin:
             admin = User(
                 name="Admin",
-                email="admin@codetantra.local",
+                email="admin@codetantra.ac.in",
                 college_name="System",
                 age=25,
                 password_hash=pwd_context.hash("admin123"),  # Change this in production
                 credits=999999,  # Unlimited credits
-                is_verified=True,
                 is_admin=True,
                 referral_code="ADMIN"
             )
             db.add(admin)
             db.commit()
-            print("Admin user created: admin@codetantra.local / admin123")
+            print("Admin user created: admin@codetantra.ac.in / admin123")
         else:
             print("Admin user already exists")
 
