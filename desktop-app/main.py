@@ -69,15 +69,23 @@ class CodeTantraApp:
                 return True
             else:
                 print("[WARNING] API server is not responding")
-                self.show_api_warning_dialog()
+                # Schedule the warning dialog to show after the main window is ready
+                self.root.after(1000, self.show_api_warning_dialog)
+                # Also show a simple messagebox as fallback
+                self.root.after(2000, self.show_fallback_warning)
                 return False
         except Exception as e:
             print(f"[WARNING] API health check failed: {e}")
-            self.show_api_warning_dialog()
+            # Schedule the warning dialog to show after the main window is ready
+            self.root.after(1000, self.show_api_warning_dialog)
+            # Also show a simple messagebox as fallback
+            self.root.after(2000, self.show_fallback_warning)
             return False
     
     def show_api_warning_dialog(self):
         """Show warning dialog when API is not available"""
+        print("[DEBUG] Showing API warning dialog...")
+        
         # Create a custom warning dialog
         warning_window = tk.Toplevel(self.root)
         warning_window.title("API Connection Warning")
@@ -89,10 +97,13 @@ class CodeTantraApp:
         warning_window.transient(self.root)
         warning_window.grab_set()
         
-        # Make it appear on top
+        # Make it appear on top and focus
         warning_window.lift()
+        warning_window.focus_force()
         warning_window.attributes('-topmost', True)
         warning_window.after_idle(lambda: warning_window.attributes('-topmost', False))
+        
+        print("[DEBUG] Warning dialog created and configured")
         
         # Main frame
         main_frame = tk.Frame(warning_window, bg=self.bg_color)
@@ -213,6 +224,29 @@ The app will continue to work, but with reduced functionality."""
         x = (warning_window.winfo_screenwidth() // 2) - (warning_window.winfo_width() // 2)
         y = (warning_window.winfo_screenheight() // 2) - (warning_window.winfo_height() // 2)
         warning_window.geometry(f"+{x}+{y}")
+        
+        print("[DEBUG] Warning dialog positioned and ready")
+        
+        # Force update and show
+        warning_window.update()
+        warning_window.deiconify()
+    
+    def show_fallback_warning(self):
+        """Show a simple messagebox warning as fallback"""
+        try:
+            print("[DEBUG] Showing fallback warning messagebox...")
+            messagebox.showwarning(
+                "API Server Unavailable",
+                "The API server is not responding.\n\n"
+                "This could be due to:\n"
+                "• Server is starting up (30-60 seconds)\n"
+                "• Server is sleeping (inactive 15+ minutes)\n"
+                "• Network connectivity issues\n\n"
+                "You can continue using the app with limited functionality.\n"
+                "Try refreshing the API status or restart the app in a few minutes."
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed to show fallback warning: {e}")
     
     def retry_api_connection(self, warning_window):
         """Retry API connection and update dialog"""
