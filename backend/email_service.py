@@ -11,8 +11,8 @@ from typing import Optional
 # Email configuration - REPLACE WITH YOUR CREDENTIALS
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SENDER_EMAIL = "your-email@gmail.com"  # REPLACE THIS
-SENDER_PASSWORD = "your-app-password"  # REPLACE THIS (use App Password, not regular password)
+SENDER_EMAIL = "ctphead25@gmail.com"  # REPLACE THIS
+SENDER_PASSWORD = "admin!@#$"  # REPLACE THIS (use App Password, not regular password)
 APP_URL = "http://localhost:8000"  # Change to your domain in production
 
 def send_email(to_email: str, subject: str, html_content: str) -> bool:

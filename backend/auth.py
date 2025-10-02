@@ -8,6 +8,7 @@ from typing import Optional
 import secrets
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -20,16 +21,33 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 VERIFICATION_TOKEN_EXPIRE_HOURS = 1
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Initialize password context with bcrypt
+try:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+except Exception as e:
+    print(f"Warning: bcrypt context initialization failed: {e}")
+    # Fallback to basic bcrypt
+    pwd_context = None
 security = HTTPBearer()
 
 def hash_password(password: str) -> str:
     """Hash a password"""
-    return pwd_context.hash(password)
+    if pwd_context:
+        return pwd_context.hash(password)
+    else:
+        # Fallback to direct bcrypt
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    if pwd_context:
+        return pwd_context.verify(plain_password, hashed_password)
+    else:
+        # Fallback to direct bcrypt
+        try:
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        except Exception:
+            return False
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT access token"""

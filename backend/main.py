@@ -6,6 +6,7 @@ Complete API for authentication, credits, and user management
 from fastapi import FastAPI, Depends, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
@@ -71,6 +72,9 @@ class UserResponse(BaseModel):
     is_admin: bool
     referral_code: str
     created_at: datetime
+
+# Mount static files (frontend)
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
 
 # Initialize database on startup
 @app.on_event("startup")
