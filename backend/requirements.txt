@@ -8,8 +8,8 @@ uvicorn[standard]==0.24.0
 # Database
 sqlalchemy==2.0.23
 
-# Authentication - Using PyJWT instead of python-jose to avoid Rust compilation
-PyJWT==2.8.0
+# Authentication - Using pre-compiled packages
+python-jose==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.6
@@ -23,6 +23,5 @@ python-dotenv==1.0.0
 # Pydantic
 pydantic==2.5.0
 
-# Production server
+# Additional dependencies for production
 gunicorn==21.2.0
-
