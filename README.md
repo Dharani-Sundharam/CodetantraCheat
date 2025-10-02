@@ -1,251 +1,229 @@
-# CodeTantra Automation Tool
+# CodeTantra Automation Desktop App
 
-A powerful automation tool that intelligently handles different types of code completion problems on CodeTantra platform using Playwright browser automation.
+## Overview
 
-## 🚀 Features
+This is the desktop application branch containing the Tkinter-based desktop client for the CodeTantra Automation Service. This branch focuses on the local automation tool that connects to the web API for credits management.
 
-### 🎨 Modern Web Interface
-- **Beautiful UI**: Professional, modern interface built with Streamlit
-- **Real-time Dashboard**: Live progress monitoring with visual feedback
-- **Multiple UI Options**: Basic, Advanced, and Terminal interfaces
-- **Interactive Analytics**: Charts, graphs, and performance metrics
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
+## Components
 
-### 🤖 Automation Features
-- **Smart Code Type Detection**: Automatically detects Type 1 (fully editable) vs Type 2 (template-based) code problems
-- **Intelligent Code Extraction**: Extracts complete code from answers account with proper scrolling and zoom
-- **Comment Removal**: Automatically cleans code by removing comments using language-specific patterns
-- **Robust Error Handling**: Comprehensive error handling with detailed logging and fallback mechanisms
-- **Multi-Language Support**: Supports Java, C++, C, Python, JavaScript, and more
-- **Auto-Close Bracket Handling**: Smart handling of CodeMirror's auto-closing brackets and quotes
-- **Progress Tracking**: Real-time progress monitoring with detailed console output
+### Desktop Application (`desktop-app/`)
+- **Tkinter GUI** with professional dark theme
+- **API Client** for backend communication
+- **Config Manager** for local settings storage
+- **Automation Runner** that integrates with the core automation
+- **Windows Installer** script for easy distribution
 
-## 📁 Project Structure
+### Core Automation (`codetantra_playwright.py`)
+- **Playwright-based** automation engine
+- **Smart problem detection** and solving
+- **Multi-language support** (Java, C++, Python, etc.)
+- **Code completion** and multiple choice handling
+- **Error handling** and retry mechanisms
 
+### Configuration Files
+- **config.py** - Main configuration settings
+- **credentials.py** - Account credentials (auto-generated)
+- **requirements.txt** - Python dependencies
+
+## Features
+
+- Professional dark themed interface
+- Secure API-based authentication
+- Real-time automation logging
+- Automatic credit deduction
+- Local configuration storage
+- Problem success tracking
+- Report generation
+- Windows installer support
+
+## Quick Start
+
+### Installation
+```bash
+# Clone the repository
+git clone <repository-url>
+cd CodetantraCheat
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install Playwright browsers
+playwright install firefox
+
+# Run the application
+python desktop-app/main.py
 ```
-CodeTantraCheat/
-├── codetantra_playwright.py    # Main automation script
-├── config.py                   # Configuration settings
-├── credentials.py              # Login credentials (create this)
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── scripts/                    # Additional scripts
-│   ├── codetantra_automation.py
-│   └── run.bat
-├── utils/                      # Utility tools
-│   ├── comment_remover.py
-│   ├── interactive_comment_remover.py
-│   ├── simple_comment_remover.py
-│   ├── comment_remover.bat
-│   └── question_type_detector.py
-├── debug_scripts/              # Debug and testing tools
-│   ├── codemirror_test.py
-│   ├── debug_page.py
-│   ├── debug_problem_number.py
-│   ├── playwright_codegen.py
-│   ├── setup_playwright.py
-│   └── test_connection.py
-└── docs/                       # Documentation
-    ├── QUICK_START.md
-    ├── SETUP_GUIDE.md
-    └── [other documentation files]
+
+### Building Executable
+```bash
+cd desktop-app
+pip install -r requirements.txt
+playwright install firefox
+build_exe.bat  # Windows
+# Or manually:
+pyinstaller --onefile --windowed --name CodeTantraAutomation --icon=icon.ico main.py
 ```
 
-## 🛠️ Installation
+## Configuration
 
-1. **Clone or download** this repository
-2. **Install Python dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Create credentials file**:
-   ```bash
-   cp credentials_template.py credentials.py
-   ```
-4. **Edit credentials.py** with your CodeTantra login details
-
-## ⚙️ Configuration
-
-### 1. Credentials Setup
-Create `credentials.py` with your login information:
+### API Settings
+Update the API URL in `desktop-app/api_client.py`:
 ```python
-# CodeTantra login credentials
-ANSWERS_ACCOUNT = {
-    "username": "your_answers_username",
-    "password": "your_answers_password"
-}
-
-TARGET_ACCOUNT = {
-    "username": "your_target_username", 
-    "password": "your_target_password"
-}
-
-LOGIN_URL = "https://your-codetantra-url.com"
+def __init__(self, base_url: str = "https://your-api-domain.com"):
 ```
 
-### 2. Configuration Options
-Edit `config.py` to customize:
-- Browser settings
-- Timing delays
-- Error handling preferences
-- Debug options
+### Automation Settings
+The app stores settings in:
+- Windows: `%APPDATA%\CodeTantraAutomation\`
+- Mac/Linux: `~/.codetantra_automation/`
 
-## 🚀 Usage
+### Credentials
+Credentials are managed through the GUI and stored securely in AppData.
 
-### 🎨 Modern Web UI (Recommended)
+## Usage
+
+### First Time Setup
+1. Launch the application
+2. Login with your web account credentials
+3. Enter CodeTantra URL and account details
+4. Set number of problems to solve
+5. Click "Start Automation"
+
+### Configuration Fields
+- **CodeTantra URL**: Your institution's CodeTantra URL
+- **Answers Account**: Account with correct solutions
+- **Target Account**: Account to submit solutions to
+- **Number of Problems**: How many problems to solve (0 for all)
+
+### Credits System
+- Code completion success: 5 credits
+- Other problems success: 3 credits
+- Failed problem: 1 credit
+- Credits are deducted automatically via API
+
+## File Structure
+
+```
+desktop-app/
+├── main.py              - Main GUI application
+├── api_client.py        - API communication
+├── config_manager.py    - Settings management
+├── automation_runner.py - Automation integration
+├── installer.iss        - Windows installer script
+├── build_exe.bat        - Build automation
+├── requirements.txt     - Dependencies
+└── README.md           - This file
+
+Core Files:
+├── codetantra_playwright.py - Main automation engine
+├── config.py               - Configuration
+├── credentials.py          - Account credentials
+└── requirements.txt        - Dependencies
+```
+
+## Building for Distribution
+
+### Step 1: Create Executable
 ```bash
-# Universal launcher with options
-python launch.py
-
-# Or launch specific UI directly
-python launch_ui.py          # Basic UI
-streamlit run app.py         # Basic UI
-streamlit run app_advanced.py # Advanced UI
+cd desktop-app
+build_exe.bat
 ```
 
-### 💻 Terminal Usage
-```bash
-# Simple runner
-python run.py
+### Step 2: Create Installer
+1. Install Inno Setup from https://jrsoftware.org/isinfo.php
+2. Open `installer.iss` in Inno Setup Compiler
+3. Click "Build" > "Compile"
+4. Installer created in `installer_output/`
 
-# Direct execution
-python codetantra_playwright.py
-```
+### Step 3: Upload to GitHub Releases
+1. Create new release on GitHub
+2. Upload installer .exe file
+3. Add release notes
 
-### 🎯 UI Features
-- **🌟 Basic UI**: Clean, simple interface with real-time logs
-- **🚀 Advanced UI**: Full-featured dashboard with analytics and charts
-- **💻 Terminal UI**: Command-line interface for power users
+## API Integration
 
-## 🎯 How It Works
+The desktop app connects to the web API for:
+- User authentication
+- Credits management
+- Usage tracking
+- Problem reporting
 
-### 1. **Type Detection**
-- Uses RESET button method to detect code type
-- Type 1: Fully editable code (clear and paste)
-- Type 2: Template-based code (comment static lines, then paste)
+Default API URL: `http://localhost:8000`
 
-### 2. **Code Extraction**
-- Maximizes browser window for better visibility
-- Scrolls through entire editor to load all content
-- Extracts code line by line with structure preservation
+For production, update the API URL in `api_client.py`.
 
-### 3. **Code Processing**
-- Detects programming language automatically
-- Removes comments using language-specific patterns
-- Handles auto-closing brackets intelligently
-
-### 4. **Code Pasting**
-- Type 1: Direct paste with error handling
-- Type 2: Comment static lines, then paste complete code
-- Verifies successful pasting
-
-### 5. **Submission & Verification**
-- Submits solution with retry mechanism
-- Verifies test case success
-- Provides detailed progress reporting
-
-## 🔧 Utility Tools
-
-### Comment Remover
-```bash
-# Interactive mode
-python utils/interactive_comment_remover.py
-
-# Simple mode
-python utils/simple_comment_remover.py
-
-# Command line mode
-python utils/comment_remover.py code.java -l java -o clean_code.java
-```
-
-### Question Type Detector
-```bash
-python utils/question_type_detector.py
-```
-
-## 📊 Supported Languages
-
-- **Java** - Primary support with full auto-detection
-- **C/C++** - Complete support with #include detection
-- **Python** - Full support with def/import detection
-- **JavaScript** - Complete support with function detection
-- **And more** - Extensible language detection system
-
-## 🐛 Debugging
-
-### Debug Scripts
-- `debug_scripts/codemirror_test.py` - Test CodeMirror extraction
-- `debug_scripts/debug_page.py` - Debug page elements
-- `debug_scripts/test_connection.py` - Test browser connection
-
-### Console Output
-The tool provides detailed console output:
-```
-Setting up Playwright browsers...
-  Maximizing window and setting zoom to 60%...
-  ✓ Window maximized and zoomed to 60%
-✓ First browser window opened (answers account - left)
-
-Extracting structured lines from answers account...
-  Detected language: java
-  Cleaning code using comment remover...
-  ✓ Code cleaned - removed comments
-  Total lines to type: 15
-  Typing line 1/15: public class Main {
-  ✓ Line 1 typed successfully
-```
-
-## ⚠️ Important Notes
-
-1. **Educational Purpose Only**: This tool is for educational purposes
-2. **Use Responsibly**: Follow your institution's academic integrity policies
-3. **Browser Requirements**: Requires Firefox browser
-4. **Network**: Stable internet connection required
-5. **Credentials**: Keep your credentials secure
-
-## 🔒 Security
-
-- Credentials are stored locally in `credentials.py`
-- No data is sent to external servers
-- All processing happens locally on your machine
-
-## 📝 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
-1. **Browser not launching**:
-   - Install Firefox browser
-   - Check Playwright installation: `playwright install firefox`
+**Cannot connect to API**
+- Check if backend server is running
+- Verify API URL in settings
+- Check internet connection
 
-2. **Login failures**:
-   - Verify credentials in `credentials.py`
-   - Check if CodeTantra URL is correct
+**Login fails**
+- Verify email and password
+- Check if account is verified
+- Ensure backend is accessible
 
-3. **Code not typing completely**:
-   - Check browser zoom settings
-   - Verify CodeMirror editor is accessible
-   - Check console output for specific errors
+**Automation errors**
+- Check CodeTantra credentials
+- Verify Playwright browsers are installed
+- Check logs in AppData folder
 
-4. **Submission failures**:
-   - Ensure both accounts are on the same problem
-   - Check if submit button is visible
-   - Verify test case requirements
+**Insufficient credits**
+- Purchase more credits on website
+- Check current balance in header
 
-### Getting Help
+### Logs
 
-1. Check console output for detailed error messages
-2. Use debug scripts to isolate issues
-3. Verify all dependencies are installed
-4. Check browser and network connectivity
+Logs are saved to:
+```
+%APPDATA%\CodeTantraAutomation\logs\
+```
 
-## 📄 License
+Each automation run creates a new log file with timestamp.
 
-This project is for educational purposes only. Use responsibly and in accordance with your institution's academic integrity policies.
+## Development
 
-## 🤝 Contributing
+### Adding Features
+1. Create new module in desktop-app/
+2. Import in main.py
+3. Add UI elements in show_main_screen()
+4. Test thoroughly
 
-This is a personal project, but suggestions and improvements are welcome!
+### Project Structure
+- `main.py` - Main GUI application
+- `api_client.py` - API communication
+- `config_manager.py` - Settings management
+- `automation_runner.py` - Automation integration
+
+## Security
+
+- Credentials stored locally only
+- Passwords not sent to any server except authentication
+- Token stored securely in AppData
+- All API communication uses HTTPS in production
+
+## Updates
+
+The app checks for updates from GitHub Releases.
+
+To update manually:
+1. Download latest installer
+2. Run installer (upgrades existing installation)
+
+## Support
+
+For issues:
+1. Check logs in AppData folder
+2. Verify API connection
+3. Contact support with log files
+
+## License
+
+Educational purposes only. Use responsibly.
 
 ---
 
-**Disclaimer**: This tool is designed for educational purposes. Users are responsible for ensuring their use complies with their institution's academic integrity policies.
+**Note:** This is the desktop app branch. For the complete system with web platform, see the main branch.
