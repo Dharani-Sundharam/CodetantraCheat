@@ -1,251 +1,153 @@
-# CodeTantra Automation Tool
+# CodeTantra Automation Service - Web Platform
 
-A powerful automation tool that intelligently handles different types of code completion problems on CodeTantra platform using Playwright browser automation.
+## Overview
 
-## 🚀 Features
+This is the web platform branch containing the backend API and frontend website for the CodeTantra Automation Service. This branch focuses on the web-based components including user management, credits system, and admin panel.
 
-### 🎨 Modern Web Interface
-- **Beautiful UI**: Professional, modern interface built with Streamlit
-- **Real-time Dashboard**: Live progress monitoring with visual feedback
-- **Multiple UI Options**: Basic, Advanced, and Terminal interfaces
-- **Interactive Analytics**: Charts, graphs, and performance metrics
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
+## Components
 
-### 🤖 Automation Features
-- **Smart Code Type Detection**: Automatically detects Type 1 (fully editable) vs Type 2 (template-based) code problems
-- **Intelligent Code Extraction**: Extracts complete code from answers account with proper scrolling and zoom
-- **Comment Removal**: Automatically cleans code by removing comments using language-specific patterns
-- **Robust Error Handling**: Comprehensive error handling with detailed logging and fallback mechanisms
-- **Multi-Language Support**: Supports Java, C++, C, Python, JavaScript, and more
-- **Auto-Close Bracket Handling**: Smart handling of CodeMirror's auto-closing brackets and quotes
-- **Progress Tracking**: Real-time progress monitoring with detailed console output
+### Backend API (`backend/`)
+- **FastAPI** application with SQLite database
+- **JWT Authentication** with email verification
+- **Credits Management** system
+- **Referral System** (70 credits per referral)
+- **Admin Panel** APIs
+- **Email Service** for verification and password reset
 
-## 📁 Project Structure
+### Frontend Website (`frontend/`)
+- **Modern HTML/CSS/JS** interface
+- **User Registration** and login
+- **Dashboard** with credits and usage tracking
+- **Admin Panel** for user management
+- **Password Reset** functionality
+- **Responsive Design** for all devices
 
-```
-CodeTantraCheat/
-├── codetantra_playwright.py    # Main automation script
-├── config.py                   # Configuration settings
-├── credentials.py              # Login credentials (create this)
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── scripts/                    # Additional scripts
-│   ├── codetantra_automation.py
-│   └── run.bat
-├── utils/                      # Utility tools
-│   ├── comment_remover.py
-│   ├── interactive_comment_remover.py
-│   ├── simple_comment_remover.py
-│   ├── comment_remover.bat
-│   └── question_type_detector.py
-├── debug_scripts/              # Debug and testing tools
-│   ├── codemirror_test.py
-│   ├── debug_page.py
-│   ├── debug_problem_number.py
-│   ├── playwright_codegen.py
-│   ├── setup_playwright.py
-│   └── test_connection.py
-└── docs/                       # Documentation
-    ├── QUICK_START.md
-    ├── SETUP_GUIDE.md
-    └── [other documentation files]
-```
+## Features
 
-## 🛠️ Installation
+- User registration with email verification
+- Secure JWT-based authentication
+- Credits system (80 free credits on signup)
+- Referral program with bonus credits
+- Real-time usage tracking
+- Admin panel for user management
+- Password reset via email
+- Modern, responsive UI
 
-1. **Clone or download** this repository
-2. **Install Python dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Create credentials file**:
-   ```bash
-   cp credentials_template.py credentials.py
-   ```
-4. **Edit credentials.py** with your CodeTantra login details
+## Quick Start
 
-## ⚙️ Configuration
-
-### 1. Credentials Setup
-Create `credentials.py` with your login information:
-```python
-# CodeTantra login credentials
-ANSWERS_ACCOUNT = {
-    "username": "your_answers_username",
-    "password": "your_answers_password"
-}
-
-TARGET_ACCOUNT = {
-    "username": "your_target_username", 
-    "password": "your_target_password"
-}
-
-LOGIN_URL = "https://your-codetantra-url.com"
-```
-
-### 2. Configuration Options
-Edit `config.py` to customize:
-- Browser settings
-- Timing delays
-- Error handling preferences
-- Debug options
-
-## 🚀 Usage
-
-### 🎨 Modern Web UI (Recommended)
+### Backend Setup
 ```bash
-# Universal launcher with options
-python launch.py
-
-# Or launch specific UI directly
-python launch_ui.py          # Basic UI
-streamlit run app.py         # Basic UI
-streamlit run app_advanced.py # Advanced UI
+cd backend
+pip install -r requirements.txt
+python database.py  # Initialize database
+python main.py      # Start server
 ```
 
-### 💻 Terminal Usage
+### Frontend Setup
 ```bash
-# Simple runner
-python run.py
-
-# Direct execution
-python codetantra_playwright.py
+cd frontend
+# Serve with any static file server
+python -m http.server 8080
+# Or deploy to Netlify/Vercel
 ```
 
-### 🎯 UI Features
-- **🌟 Basic UI**: Clean, simple interface with real-time logs
-- **🚀 Advanced UI**: Full-featured dashboard with analytics and charts
-- **💻 Terminal UI**: Command-line interface for power users
+## API Endpoints
 
-## 🎯 How It Works
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/verify-email` - Email verification
+- `POST /api/auth/forgot-password` - Password reset request
+- `POST /api/auth/reset-password` - Password reset
 
-### 1. **Type Detection**
-- Uses RESET button method to detect code type
-- Type 1: Fully editable code (clear and paste)
-- Type 2: Template-based code (comment static lines, then paste)
+### User Operations
+- `GET /api/user/profile` - Get user profile
+- `GET /api/user/credits` - Get credits balance
+- `POST /api/credits/deduct` - Deduct credits
+- `GET /api/user/usage-history` - Usage logs
+- `GET /api/user/transactions` - Transaction history
 
-### 2. **Code Extraction**
-- Maximizes browser window for better visibility
-- Scrolls through entire editor to load all content
-- Extracts code line by line with structure preservation
+### Admin Operations
+- `GET /api/admin/users` - List all users
+- `POST /api/admin/credits` - Manage user credits
+- `POST /api/admin/suspend-user` - Suspend user
+- `GET /api/admin/stats` - Platform statistics
 
-### 3. **Code Processing**
-- Detects programming language automatically
-- Removes comments using language-specific patterns
-- Handles auto-closing brackets intelligently
+## Configuration
 
-### 4. **Code Pasting**
-- Type 1: Direct paste with error handling
-- Type 2: Comment static lines, then paste complete code
-- Verifies successful pasting
+### Backend Configuration
+1. Update email settings in `backend/email_service.py`
+2. Set secret key in `backend/auth.py`
+3. Configure CORS in `backend/main.py`
 
-### 5. **Submission & Verification**
-- Submits solution with retry mechanism
-- Verifies test case success
-- Provides detailed progress reporting
+### Frontend Configuration
+1. Update API URL in all HTML files
+2. Configure download links
+3. Set up domain-specific settings
 
-## 🔧 Utility Tools
+## Deployment
 
-### Comment Remover
-```bash
-# Interactive mode
-python utils/interactive_comment_remover.py
+### Backend (Render)
+1. Connect GitHub repository
+2. Set build command: `pip install -r requirements.txt`
+3. Set start command: `cd backend && python main.py`
+4. Add environment variables
 
-# Simple mode
-python utils/simple_comment_remover.py
+### Frontend (Netlify)
+1. Connect repository
+2. Set build directory: `frontend`
+3. Deploy automatically
 
-# Command line mode
-python utils/comment_remover.py code.java -l java -o clean_code.java
-```
+## Default Admin Account
 
-### Question Type Detector
-```bash
-python utils/question_type_detector.py
-```
+- Email: `admin@codetantra.local`
+- Password: `admin123`
+- Credits: Unlimited
 
-## 📊 Supported Languages
+**Important:** Change this password in production!
 
-- **Java** - Primary support with full auto-detection
-- **C/C++** - Complete support with #include detection
-- **Python** - Full support with def/import detection
-- **JavaScript** - Complete support with function detection
-- **And more** - Extensible language detection system
+## Credits System
 
-## 🐛 Debugging
+- New user signup: **80 credits**
+- Code completion success: **5 credits**
+- Other problem success: **3 credits**
+- Failed problem: **1 credit**
+- Successful referral: **70 credits**
 
-### Debug Scripts
-- `debug_scripts/codemirror_test.py` - Test CodeMirror extraction
-- `debug_scripts/debug_page.py` - Debug page elements
-- `debug_scripts/test_connection.py` - Test browser connection
+## Database Schema
 
-### Console Output
-The tool provides detailed console output:
-```
-Setting up Playwright browsers...
-  Maximizing window and setting zoom to 60%...
-  ✓ Window maximized and zoomed to 60%
-✓ First browser window opened (answers account - left)
+- **users** - User accounts and profiles
+- **credit_transactions** - Credits history
+- **usage_logs** - Problem solving logs
+- **verification_tokens** - Email verification
 
-Extracting structured lines from answers account...
-  Detected language: java
-  Cleaning code using comment remover...
-  ✓ Code cleaned - removed comments
-  Total lines to type: 15
-  Typing line 1/15: public class Main {
-  ✓ Line 1 typed successfully
-```
+## Security Features
 
-## ⚠️ Important Notes
+- JWT token authentication
+- Password hashing with bcrypt
+- Email verification required
+- CORS protection
+- Input validation
+- SQL injection protection
 
-1. **Educational Purpose Only**: This tool is for educational purposes
-2. **Use Responsibly**: Follow your institution's academic integrity policies
-3. **Browser Requirements**: Requires Firefox browser
-4. **Network**: Stable internet connection required
-5. **Credentials**: Keep your credentials secure
+## Monitoring
 
-## 🔒 Security
+- API documentation at `/docs`
+- Admin panel for user management
+- Usage statistics and analytics
+- Error logging and monitoring
 
-- Credentials are stored locally in `credentials.py`
-- No data is sent to external servers
-- All processing happens locally on your machine
+## Support
 
-## 📝 Troubleshooting
+For issues or questions:
+1. Check the API documentation
+2. Review logs in admin panel
+3. Contact support with error details
 
-### Common Issues
+## License
 
-1. **Browser not launching**:
-   - Install Firefox browser
-   - Check Playwright installation: `playwright install firefox`
-
-2. **Login failures**:
-   - Verify credentials in `credentials.py`
-   - Check if CodeTantra URL is correct
-
-3. **Code not typing completely**:
-   - Check browser zoom settings
-   - Verify CodeMirror editor is accessible
-   - Check console output for specific errors
-
-4. **Submission failures**:
-   - Ensure both accounts are on the same problem
-   - Check if submit button is visible
-   - Verify test case requirements
-
-### Getting Help
-
-1. Check console output for detailed error messages
-2. Use debug scripts to isolate issues
-3. Verify all dependencies are installed
-4. Check browser and network connectivity
-
-## 📄 License
-
-This project is for educational purposes only. Use responsibly and in accordance with your institution's academic integrity policies.
-
-## 🤝 Contributing
-
-This is a personal project, but suggestions and improvements are welcome!
+Educational purposes only. Use responsibly.
 
 ---
 
-**Disclaimer**: This tool is designed for educational purposes. Users are responsible for ensuring their use complies with their institution's academic integrity policies.
+**Note:** This is the web platform branch. For the complete system with desktop app, see the main branch.
