@@ -43,21 +43,37 @@ def get_db_context():
 def create_admin_user():
     """Create default admin user with unlimited credits"""
     with get_db_context() as db:
+        # Check if admin exists by email
         admin = db.query(User).filter(User.email == "admin@codetantra.ac.in").first()
         if not admin:
-            admin = User(
-                name="Admin",
-                email="admin@codetantra.ac.in",
-                college_name="System",
-                age=25,
-                password_hash=pwd_context.hash("admin123"),  # Change this in production
-                credits=999999,  # Unlimited credits
-                is_admin=True,
-                referral_code="ADMIN"
-            )
-            db.add(admin)
-            db.commit()
-            print("Admin user created: admin@codetantra.ac.in / admin123")
+            # Check if ADMIN referral code exists
+            existing_admin = db.query(User).filter(User.referral_code == "ADMIN").first()
+            if existing_admin:
+                # Update existing admin to new email
+                existing_admin.email = "admin@codetantra.ac.in"
+                existing_admin.name = "Admin"
+                existing_admin.college_name = "System"
+                existing_admin.age = 25
+                existing_admin.password_hash = pwd_context.hash("admin123")
+                existing_admin.credits = 999999
+                existing_admin.is_admin = True
+                db.commit()
+                print("Admin user updated: admin@codetantra.ac.in / admin123")
+            else:
+                # Create new admin
+                admin = User(
+                    name="Admin",
+                    email="admin@codetantra.ac.in",
+                    college_name="System",
+                    age=25,
+                    password_hash=pwd_context.hash("admin123"),
+                    credits=999999,
+                    is_admin=True,
+                    referral_code="ADMIN"
+                )
+                db.add(admin)
+                db.commit()
+                print("Admin user created: admin@codetantra.ac.in / admin123")
         else:
             print("Admin user already exists")
 
