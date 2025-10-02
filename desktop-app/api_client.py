@@ -7,7 +7,7 @@ import requests
 from typing import Optional, Dict, Any
 
 class APIClient:
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "https://ctautomationpro.onrender.com"):
         """Initialize API client"""
         self.base_url = base_url
         self.token = None
