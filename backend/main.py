@@ -389,23 +389,29 @@ async def get_all_users(
     db: Session = Depends(get_db)
 ):
     """Get all users (admin only)"""
-    users = db.query(User).offset(skip).limit(limit).all()
-    
-    return {
-        "users": [
-            {
-                "id": u.id,
-                "name": u.name,
-                "email": u.email,
-                "college_name": u.college_name,
-                "credits": u.credits,
-                "is_active": u.is_active,
-                "created_at": u.created_at,
-                "last_login": u.last_login
-            }
-            for u in users
-        ]
-    }
+    try:
+        users = db.query(User).offset(skip).limit(limit).all()
+        
+        return {
+            "users": [
+                {
+                    "id": u.id,
+                    "name": u.name,
+                    "email": u.email,
+                    "college_name": u.college_name,
+                    "credits": u.credits,
+                    "is_active": u.is_active,
+                    "created_at": u.created_at,
+                    "last_login": u.last_login
+                }
+                for u in users
+            ]
+        }
+    except Exception as e:
+        return {
+            "users": [],
+            "error": str(e)
+        }
 
 @app.post("/api/admin/credits")
 async def admin_add_credits(
@@ -471,16 +477,30 @@ async def get_stats(
     db: Session = Depends(get_db)
 ):
     """Get platform statistics (admin only)"""
-    total_users = db.query(User).count()
-    active_users = db.query(User).filter(User.is_active == True).count()
-    total_usage = db.query(UsageLog).count()
-    
-    return {
-        "total_users": total_users,
-        "verified_users": total_users,  # All users are now considered verified
-        "active_users": active_users,
-        "total_problems_solved": total_usage
-    }
+    try:
+        total_users = db.query(User).count()
+        active_users = db.query(User).filter(User.is_active == True).count()
+        
+        # Try to get usage count, but don't fail if table doesn't exist
+        try:
+            total_usage = db.query(UsageLog).count()
+        except:
+            total_usage = 0
+        
+        return {
+            "total_users": total_users,
+            "verified_users": total_users,  # All users are now considered verified
+            "active_users": active_users,
+            "total_problems_solved": total_usage
+        }
+    except Exception as e:
+        return {
+            "total_users": 0,
+            "verified_users": 0,
+            "active_users": 0,
+            "total_problems_solved": 0,
+            "error": str(e)
+        }
 
 # Run server
 if __name__ == "__main__":
