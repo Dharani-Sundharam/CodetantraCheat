@@ -1,5 +1,5 @@
 # CodeTantra Automation Backend Dependencies
-# Optimized for Render deployment (no Rust compilation)
+# 100% Rust-free for Render deployment
 
 # Web Framework
 fastapi==0.104.1
@@ -8,7 +8,7 @@ uvicorn[standard]==0.24.0
 # Database
 sqlalchemy==2.0.23
 
-# Authentication - Using PyJWT instead of python-jose to avoid Rust compilation
+# Authentication - Pure Python implementations
 PyJWT==2.8.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
@@ -20,9 +20,11 @@ email-validator==2.1.0
 # Environment variables
 python-dotenv==1.0.0
 
-# Pydantic - Using older version that doesn't require Rust
+# Pydantic - Version 1 (no Rust required)
 pydantic==1.10.12
 
 # Production server
 gunicorn==21.2.0
 
+# Additional safe packages
+requests==2.31.0
