@@ -14,7 +14,7 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "ctphead25@gmail.com")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "uxmw cfjs ckdw ptme")
-APP_URL = os.getenv("APP_URL", "http://localhost:8000")
+APP_URL = os.getenv("APP_URL", "https://ctautomationpro.onrender.com")
 
 def send_email(to_email: str, subject: str, html_content: str) -> bool:
     """Send email via Gmail SMTP"""
