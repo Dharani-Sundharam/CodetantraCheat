@@ -5,8 +5,8 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 
-# Database
-sqlalchemy==2.0.23
+# Database - Python 3.13 compatible version
+sqlalchemy==2.0.36
 
 # Authentication - Pure Python implementations
 PyJWT==2.8.0
