@@ -112,6 +112,27 @@ async def health():
 async def api_root():
     return {"status": "ok", "message": "CodeTantra Automation API is running"}
 
+@app.post("/api/admin/create-admin")
+async def create_admin_manual(db: Session = Depends(get_db)):
+    """Manually create admin user (for deployment)"""
+    admin = db.query(User).filter(User.email == "admin@codetantra.ac.in").first()
+    if admin:
+        return {"message": "Admin user already exists"}
+    
+    admin = User(
+        name="Admin",
+        email="admin@codetantra.ac.in",
+        college_name="System",
+        age=25,
+        password_hash=auth.hash_password("admin123"),
+        credits=999999,
+        is_admin=True,
+        referral_code="ADMIN"
+    )
+    db.add(admin)
+    db.commit()
+    return {"message": "Admin user created: admin@codetantra.ac.in / admin123"}
+
 # Authentication endpoints
 @app.post("/api/auth/register")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
@@ -378,7 +399,6 @@ async def get_all_users(
                 "email": u.email,
                 "college_name": u.college_name,
                 "credits": u.credits,
-                "is_verified": u.is_verified,
                 "is_active": u.is_active,
                 "created_at": u.created_at,
                 "last_login": u.last_login
@@ -452,13 +472,12 @@ async def get_stats(
 ):
     """Get platform statistics (admin only)"""
     total_users = db.query(User).count()
-    verified_users = db.query(User).filter(User.is_verified == True).count()
     active_users = db.query(User).filter(User.is_active == True).count()
     total_usage = db.query(UsageLog).count()
     
     return {
         "total_users": total_users,
-        "verified_users": verified_users,
+        "verified_users": total_users,  # All users are now considered verified
         "active_users": active_users,
         "total_problems_solved": total_usage
     }
