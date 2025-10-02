@@ -6,8 +6,7 @@ JWT tokens, email verification, password reset
 from datetime import datetime, timedelta
 from typing import Optional
 import secrets
-import jwt
-from jwt.exceptions import InvalidTokenError
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -112,7 +111,7 @@ async def get_current_user(
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-    except InvalidTokenError:
+    except JWTError:
         raise credentials_exception
     
     user = db.query(User).filter(User.email == email).first()
