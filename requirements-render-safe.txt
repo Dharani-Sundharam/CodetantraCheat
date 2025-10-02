@@ -1,9 +1,9 @@
 # CodeTantra Automation Backend Dependencies
 # 100% Rust-free for Render deployment
 
-# Web Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+# Web Framework - Compatible with Pydantic v1
+fastapi==0.95.2
+uvicorn[standard]==0.22.0
 
 # Database - Python 3.13 compatible version
 sqlalchemy==2.0.36
