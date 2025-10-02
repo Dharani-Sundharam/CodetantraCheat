@@ -8,6 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import secrets
+import re
 
 Base = declarative_base()
 
@@ -21,7 +22,6 @@ class User(Base):
     age = Column(Integer, nullable=False)
     password_hash = Column(String, nullable=False)
     credits = Column(Integer, default=80)  # 80 free credits on signup
-    is_verified = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     referral_code = Column(String, unique=True, index=True)
@@ -37,6 +37,12 @@ class User(Base):
         super().__init__(**kwargs)
         if not self.referral_code:
             self.referral_code = secrets.token_urlsafe(8)
+    
+    @staticmethod
+    def is_educational_email(email: str) -> bool:
+        """Check if email is from an educational domain"""
+        educational_domains = ['.ac.in', '.edu.in', '.edu', '.ac.uk', '.edu.au']
+        return any(email.lower().endswith(domain) for domain in educational_domains)
 
 
 class Transaction(Base):

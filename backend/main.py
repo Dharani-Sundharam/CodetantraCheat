@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 
 import database
 import auth
-import email_service
 from models import User, Transaction, UsageLog
 from database import get_db
 
@@ -68,7 +67,6 @@ class UserResponse(BaseModel):
     college_name: str
     age: int
     credits: int
-    is_verified: bool
     is_admin: bool
     referral_code: str
     created_at: datetime
@@ -118,6 +116,13 @@ async def api_root():
 @app.post("/api/auth/register")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register a new user"""
+    # Validate educational email domain
+    if not User.is_educational_email(user_data.email):
+        raise HTTPException(
+            status_code=400, 
+            detail="Only educational email addresses are allowed (.ac.in, .edu.in, .edu, .ac.uk, .edu.au)"
+        )
+    
     # Check if email already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -153,57 +158,22 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.add(transaction)
     db.commit()
     
-    # Create verification token and send email
-    token = auth.create_verification_token(db, new_user.id, "email_verification")
-    email_service.send_verification_email(new_user.email, token, new_user.name)
-    
-    return {"message": "Registration successful. Please check your email to verify your account."}
-
-@app.get("/api/auth/verify-email")
-async def verify_email(token: str, db: Session = Depends(get_db)):
-    """Verify user email with token"""
-    user = auth.verify_token(token, db, "email_verification")
-    if not user:
-        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
-    
-    # Mark user as verified
-    user.is_verified = True
-    db.commit()
-    
-    # Send welcome email
-    email_service.send_welcome_email(user.email, user.name, user.referral_code)
-    
     # Award referral bonus if applicable
-    if user.referred_by:
-        referrer = db.query(User).filter(User.referral_code == user.referred_by).first()
+    if new_user.referred_by:
+        referrer = db.query(User).filter(User.referral_code == new_user.referred_by).first()
         if referrer:
             referrer.credits += 70  # 70 credits for referral
             transaction = Transaction(
                 user_id=referrer.id,
                 amount=70,
                 transaction_type="referral",
-                description=f"Referral bonus for {user.email}"
+                description=f"Referral bonus for {new_user.email}"
             )
             db.add(transaction)
             db.commit()
     
-    return {"message": "Email verified successfully! You can now log in."}
+    return {"message": "Registration successful! You can now log in."}
 
-@app.post("/api/auth/verify-email-manual")
-async def verify_email_manual(email: str, db: Session = Depends(get_db)):
-    """Manually verify user email (for testing)"""
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if user.is_verified:
-        return {"message": "User is already verified"}
-    
-    # Mark user as verified
-    user.is_verified = True
-    db.commit()
-    
-    return {"message": f"Email {email} verified successfully! You can now log in."}
 
 @app.post("/api/auth/login")
 async def login(credentials: UserLogin, db: Session = Depends(get_db)):
@@ -212,9 +182,6 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     
     if not user or not auth.verify_password(credentials.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    if not user.is_verified:
-        raise HTTPException(status_code=403, detail="Please verify your email first")
     
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account suspended. Please contact support.")
@@ -240,7 +207,6 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             college_name=user.college_name,
             age=user.age,
             credits=user.credits,
-            is_verified=user.is_verified,
             is_admin=user.is_admin,
             referral_code=user.referral_code,
             created_at=user.created_at
@@ -286,7 +252,6 @@ async def get_profile(current_user: User = Depends(auth.get_current_user)):
         college_name=current_user.college_name,
         age=current_user.age,
         credits=current_user.credits,
-        is_verified=current_user.is_verified,
         is_admin=current_user.is_admin,
         referral_code=current_user.referral_code,
         created_at=current_user.created_at
