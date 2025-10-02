@@ -12,6 +12,9 @@ class APIClient:
         self.base_url = base_url
         self.token = None
         self.session = requests.Session()
+        # Configure session for better HTTPS handling
+        self.session.verify = True  # Enable SSL verification
+        self.session.timeout = 30   # Set timeout to 30 seconds
     
     def set_token(self, token: str):
         """Set authentication token"""
