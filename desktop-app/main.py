@@ -46,6 +46,9 @@ class CodeTantraApp:
         self.automation = None
         self.is_running = False
         
+        # Check API health at startup
+        self.api_available = self.check_api_health_at_startup()
+        
         # Check if logged in
         token = self.config.get_token()
         if token:
@@ -56,6 +59,238 @@ class CodeTantraApp:
                 self.show_login_screen()
         else:
             self.show_login_screen()
+    
+    def check_api_health_at_startup(self):
+        """Check API health at startup and show UI warning if needed"""
+        try:
+            # Test API connectivity
+            if self.api_client.ping():
+                print("[OK] API server is healthy")
+                return True
+            else:
+                print("[WARNING] API server is not responding")
+                self.show_api_warning_dialog()
+                return False
+        except Exception as e:
+            print(f"[WARNING] API health check failed: {e}")
+            self.show_api_warning_dialog()
+            return False
+    
+    def show_api_warning_dialog(self):
+        """Show warning dialog when API is not available"""
+        # Create a custom warning dialog
+        warning_window = tk.Toplevel(self.root)
+        warning_window.title("API Connection Warning")
+        warning_window.geometry("500x400")
+        warning_window.resizable(False, False)
+        warning_window.configure(bg=self.bg_color)
+        
+        # Center the window
+        warning_window.transient(self.root)
+        warning_window.grab_set()
+        
+        # Make it appear on top
+        warning_window.lift()
+        warning_window.attributes('-topmost', True)
+        warning_window.after_idle(lambda: warning_window.attributes('-topmost', False))
+        
+        # Main frame
+        main_frame = tk.Frame(warning_window, bg=self.bg_color)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Warning icon and title
+        title_frame = tk.Frame(main_frame, bg=self.bg_color)
+        title_frame.pack(fill="x", pady=(0, 20))
+        
+        # Warning icon (using text symbol)
+        warning_icon = tk.Label(
+            title_frame,
+            text="!",
+            font=("Arial", 48, "bold"),
+            bg=self.bg_color,
+            fg="#ff6b6b"
+        )
+        warning_icon.pack(side="left", padx=(0, 15))
+        
+        # Title text
+        title_text = tk.Label(
+            title_frame,
+            text="API Server Unavailable",
+            font=("Arial", 18, "bold"),
+            bg=self.bg_color,
+            fg="#ff6b6b"
+        )
+        title_text.pack(side="left")
+        
+        # Warning message
+        warning_text = tk.Text(
+            main_frame,
+            height=12,
+            width=50,
+            wrap="word",
+            font=("Arial", 11),
+            bg=self.entry_bg,
+            fg=self.fg_color,
+            relief="flat",
+            borderwidth=0,
+            padx=15,
+            pady=15
+        )
+        warning_text.pack(fill="both", expand=True, pady=(0, 20))
+        
+        # Insert warning message
+        warning_message = """The API server is currently unavailable. This could be due to:
+
+• Server is starting up (takes 30-60 seconds)
+• Server is sleeping (inactive for 15+ minutes)  
+• Network connectivity issues
+• Server maintenance
+
+WHAT THIS MEANS:
+• You can still use the app for testing
+• Credits won't be deducted automatically
+• Some features may be limited
+
+WHAT YOU CAN DO:
+1. Wait 1-2 minutes and restart the app
+2. Check your internet connection
+3. Visit the website to wake up the server
+4. Continue anyway (limited functionality)
+
+The app will continue to work, but with reduced functionality."""
+        
+        warning_text.insert("1.0", warning_message)
+        warning_text.config(state="disabled")
+        
+        # Button frame
+        button_frame = tk.Frame(main_frame, bg=self.bg_color)
+        button_frame.pack(fill="x", pady=(10, 0))
+        
+        # Continue anyway button
+        continue_button = tk.Button(
+            button_frame,
+            text="Continue Anyway",
+            font=("Arial", 12, "bold"),
+            bg="#4CAF50",
+            fg="white",
+            relief="flat",
+            padx=20,
+            pady=10,
+            command=lambda: self.close_api_warning(warning_window, continue_anyway=True)
+        )
+        continue_button.pack(side="right", padx=(10, 0))
+        
+        # Retry button
+        retry_button = tk.Button(
+            button_frame,
+            text="Retry Connection",
+            font=("Arial", 12, "bold"),
+            bg=self.accent_color,
+            fg="white",
+            relief="flat",
+            padx=20,
+            pady=10,
+            command=lambda: self.retry_api_connection(warning_window)
+        )
+        retry_button.pack(side="right", padx=(10, 0))
+        
+        # Exit button
+        exit_button = tk.Button(
+            button_frame,
+            text="Exit App",
+            font=("Arial", 12),
+            bg="#f44336",
+            fg="white",
+            relief="flat",
+            padx=20,
+            pady=10,
+            command=lambda: self.close_api_warning(warning_window, continue_anyway=False)
+        )
+        exit_button.pack(side="left")
+        
+        # Center the window on screen
+        warning_window.update_idletasks()
+        x = (warning_window.winfo_screenwidth() // 2) - (warning_window.winfo_width() // 2)
+        y = (warning_window.winfo_screenheight() // 2) - (warning_window.winfo_height() // 2)
+        warning_window.geometry(f"+{x}+{y}")
+    
+    def retry_api_connection(self, warning_window):
+        """Retry API connection and update dialog"""
+        # Show loading state
+        for widget in warning_window.winfo_children():
+            if isinstance(widget, tk.Frame):
+                for child in widget.winfo_children():
+                    if isinstance(child, tk.Button):
+                        child.config(state="disabled", text="Testing...")
+        
+        # Test connection
+        if self.api_client.ping():
+            # Success - show success message briefly then close
+            self.show_api_success_message(warning_window)
+        else:
+            # Still failed - re-enable buttons
+            for widget in warning_window.winfo_children():
+                if isinstance(widget, tk.Frame):
+                    for child in widget.winfo_children():
+                        if isinstance(child, tk.Button):
+                            child.config(state="normal")
+                            if "Testing" in child.cget("text"):
+                                child.config(text="Retry Connection")
+    
+    def show_api_success_message(self, warning_window):
+        """Show success message when API connection is restored"""
+        # Update the warning text to show success
+        for widget in warning_window.winfo_children():
+            if isinstance(widget, tk.Text):
+                widget.config(state="normal")
+                widget.delete("1.0", "end")
+                widget.insert("1.0", "[SUCCESS] API Connection Restored!\n\nYou can now use all features normally.")
+                widget.config(state="disabled")
+                break
+        
+        # Update buttons
+        for widget in warning_window.winfo_children():
+            if isinstance(widget, tk.Frame):
+                for child in widget.winfo_children():
+                    if isinstance(child, tk.Button):
+                        if "Continue" in child.cget("text"):
+                            child.config(text="Continue", state="normal")
+                        elif "Retry" in child.cget("text"):
+                            child.config(text="Close", command=lambda: self.close_api_warning(warning_window, continue_anyway=True))
+                        elif "Exit" in child.cget("text"):
+                            child.pack_forget()
+    
+    def close_api_warning(self, warning_window, continue_anyway=False):
+        """Close the API warning dialog"""
+        warning_window.destroy()
+        if not continue_anyway:
+            self.root.quit()
+    
+    def refresh_api_status(self):
+        """Refresh API status and update UI"""
+        try:
+            # Show loading state
+            self.refresh_api_btn.config(text="Testing...", state="disabled")
+            self.api_status_label.config(text="[TESTING] Checking API...", fg="#6b7280")
+            
+            # Test API connection
+            if self.api_client.ping():
+                self.api_available = True
+                self.api_status_label.config(text="[ONLINE] API Available", fg="#10b981")
+                self.log_message("[SUCCESS] API connection restored!")
+            else:
+                self.api_available = False
+                self.api_status_label.config(text="[OFFLINE] API Unavailable", fg="#ef4444")
+                self.log_message("[ERROR] API connection failed")
+            
+            # Re-enable button
+            self.refresh_api_btn.config(text="Refresh API Status", state="normal")
+            
+        except Exception as e:
+            self.api_available = False
+            self.api_status_label.config(text="[ERROR] API Error", fg="#ef4444")
+            self.refresh_api_btn.config(text="Refresh API Status", state="normal")
+            self.log_message(f"[ERROR] API test error: {e}")
     
     def clear_window(self):
         """Clear all widgets from window"""
@@ -222,6 +457,16 @@ class CodeTantraApp:
             self.view_target_password_btn.config(text="Show")
         self.show_target_password.set(not self.show_target_password.get())
     
+    def toggle_answers_password_visibility(self):
+        """Toggle answers password visibility"""
+        if self.answers_show_password.get():
+            self.answers_password.config(show="")
+            self.view_answers_password_btn.config(text="Hide")
+        else:
+            self.answers_password.config(show="*")
+            self.view_answers_password_btn.config(text="Show")
+        self.answers_show_password.set(not self.answers_show_password.get())
+    
     def handle_login(self):
         """Handle login button click"""
         email = self.email_entry.get().strip()
@@ -289,6 +534,16 @@ class CodeTantraApp:
             fg="#10b981"
         )
         self.credits_label.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # API Status indicator
+        self.api_status_label = tk.Label(
+            right_frame,
+            text="[ONLINE] API Available" if self.api_available else "[OFFLINE] API Unavailable",
+            font=("Arial", 10),
+            bg=self.frame_bg,
+            fg="#10b981" if self.api_available else "#ef4444"
+        )
+        self.api_status_label.pack(side=tk.LEFT, padx=(0, 15))
         
         logout_btn = tk.Button(
             right_frame,
@@ -390,18 +645,19 @@ class CodeTantraApp:
         )
         self.endless_btn.pack(fill=tk.X, padx=15, pady=(0, 10), ipady=10)
         
-        # Test browser button
-        self.test_browser_btn = tk.Button(
+        # API Status refresh button
+        self.refresh_api_btn = tk.Button(
             right_panel,
-            text="Test Browser",
+            text="Refresh API Status",
             font=("Arial", 10),
             bg="#6b7280",
             fg="white",
             relief=tk.FLAT,
             cursor="hand2",
-            command=self.test_browser
+            command=self.refresh_api_status
         )
-        self.test_browser_btn.pack(fill=tk.X, padx=15, pady=(0, 15), ipady=8)
+        self.refresh_api_btn.pack(fill=tk.X, padx=15, pady=(0, 10), ipady=8)
+        
     
     def create_config_fields(self, parent):
         """Create configuration input fields"""
@@ -460,8 +716,12 @@ class CodeTantraApp:
             fg=self.fg_color
         ).pack(anchor="w", pady=(0, 5))
         
+        # Answers password frame for entry and view button
+        answers_password_frame = tk.Frame(fields_frame, bg=self.frame_bg)
+        answers_password_frame.pack(fill=tk.X, pady=(0, 15))
+        
         self.answers_password = tk.Entry(
-            fields_frame,
+            answers_password_frame,
             font=("Arial", 10),
             bg=self.entry_bg,
             fg=self.fg_color,
@@ -469,8 +729,22 @@ class CodeTantraApp:
             relief=tk.FLAT,
             show="*"
         )
-        self.answers_password.pack(fill=tk.X, pady=(0, 15), ipady=6)
+        self.answers_password.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6)
         self.answers_password.insert(0, config.get('answers_password', ''))
+        
+        # View answers password button
+        self.answers_show_password = tk.BooleanVar()
+        self.view_answers_password_btn = tk.Button(
+            answers_password_frame,
+            text="Show",
+            font=("Arial", 8),
+            bg=self.entry_bg,
+            fg=self.fg_color,
+            relief=tk.FLAT,
+            width=5,
+            command=self.toggle_answers_password_visibility
+        )
+        self.view_answers_password_btn.pack(side=tk.LEFT, padx=(5, 0), ipady=6)
         
         # Target Email
         tk.Label(
@@ -564,6 +838,19 @@ class CodeTantraApp:
             messagebox.showwarning("Already Running", "Automation is already in progress")
             return
         
+        # Check API availability
+        if not self.api_available:
+            result = messagebox.askyesno(
+                "API Unavailable", 
+                "The API server is currently unavailable. This means:\n\n"
+                "• Credits won't be deducted automatically\n"
+                "• Some features may be limited\n"
+                "• You can still test the automation\n\n"
+                "Do you want to continue anyway?"
+            )
+            if not result:
+                return
+        
         # Validate inputs
         if not all([
             self.url_entry.get(),
@@ -604,6 +891,19 @@ class CodeTantraApp:
         if self.is_running:
             messagebox.showwarning("Already Running", "Automation is already in progress")
             return
+        
+        # Check API availability
+        if not self.api_available:
+            result = messagebox.askyesno(
+                "API Unavailable", 
+                "The API server is currently unavailable. This means:\n\n"
+                "• Credits won't be deducted automatically\n"
+                "• Some features may be limited\n"
+                "• You can still test the automation\n\n"
+                "Do you want to continue anyway?"
+            )
+            if not result:
+                return
         
         # Validate inputs
         if not all([
@@ -741,39 +1041,6 @@ class CodeTantraApp:
         self.log_message(f"Error: {error}")
         messagebox.showerror("Automation Error", f"An error occurred:\n{error}")
     
-    def test_browser(self):
-        """Test Playwright browser functionality"""
-        self.log_message("Testing browser functionality...")
-        
-        def run_test():
-            try:
-                import subprocess
-                import sys
-                from pathlib import Path
-                
-                # Run the test script
-                test_script = Path(__file__).parent / "test_playwright.py"
-                result = subprocess.run([sys.executable, str(test_script)], 
-                                      capture_output=True, text=True, timeout=30)
-                
-                if result.returncode == 0:
-                    self.root.after(0, lambda: self.log_message("[SUCCESS] Browser test passed!"))
-                    self.root.after(0, lambda: messagebox.showinfo("Browser Test", "[SUCCESS] Browser test passed!\nPlaywright is working correctly."))
-                else:
-                    self.root.after(0, lambda: self.log_message(f"[FAILED] Browser test failed:\n{result.stderr}"))
-                    self.root.after(0, lambda: messagebox.showerror("Browser Test Failed", f"[FAILED] Browser test failed:\n\n{result.stderr}\n\nPlease check the troubleshooting steps in the log."))
-                    
-            except subprocess.TimeoutExpired:
-                self.root.after(0, lambda: self.log_message("[TIMEOUT] Browser test timed out"))
-                self.root.after(0, lambda: messagebox.showerror("Browser Test", "[TIMEOUT] Browser test timed out. This might indicate browser launch issues."))
-            except Exception as e:
-                self.root.after(0, lambda: self.log_message(f"[ERROR] Browser test error: {e}"))
-                self.root.after(0, lambda: messagebox.showerror("Browser Test", f"[ERROR] Browser test error:\n{e}"))
-        
-        # Run test in separate thread
-        thread = threading.Thread(target=run_test)
-        thread.daemon = True
-        thread.start()
     
     def refresh_credits(self):
         """Refresh credits display"""
