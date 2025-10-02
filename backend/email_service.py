@@ -8,12 +8,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
 
-# Email configuration - REPLACE WITH YOUR CREDENTIALS
+# Email configuration - Use environment variables
+import os
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SENDER_EMAIL = "ctphead25@gmail.com"  # REPLACE THIS
-SENDER_PASSWORD = "admin!@#$"  # REPLACE THIS (use App Password, not regular password)
-APP_URL = "http://localhost:8000"  # Change to your domain in production
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "ctphead25@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "uxmw cfjs ckdw ptme")
+APP_URL = os.getenv("APP_URL", "http://localhost:8000")
 
 def send_email(to_email: str, subject: str, html_content: str) -> bool:
     """Send email via Gmail SMTP"""
@@ -34,11 +35,17 @@ def send_email(to_email: str, subject: str, html_content: str) -> bool:
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.sendmail(SENDER_EMAIL, to_email, message.as_string())
         
-        print(f"Email sent successfully to {to_email}")
+        print(f"SUCCESS: Email sent successfully to {to_email}")
         return True
     except Exception as e:
-        print(f"Failed to send email to {to_email}: {str(e)}")
+        print(f"ERROR: Failed to send email to {to_email}: {str(e)}")
         return False
+
+def extract_verification_url(html_content: str) -> str:
+    """Extract verification URL from HTML content"""
+    import re
+    match = re.search(r'href="([^"]*verify-email[^"]*)"', html_content)
+    return match.group(1) if match else "URL not found"
 
 def send_verification_email(to_email: str, token: str, user_name: str) -> bool:
     """Send email verification link"""

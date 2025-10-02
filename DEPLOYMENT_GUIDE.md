@@ -18,7 +18,7 @@
 - **Environment:** `Python 3`
 - **Python Version:** `3.11.9` (or 3.11.x)
 - **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `cd backend && python main.py`
+- **Start Command:** `python main.py`
 
 ### **Step 3: Environment Variables**
 Add these in Render service settings:
@@ -49,8 +49,7 @@ cd CodetantraCheat
 # Install dependencies
 pip install -r requirements.txt
 
-# Run backend
-cd backend
+# Run application
 python main.py
 ```
 
@@ -89,14 +88,14 @@ pydantic==2.5.0
 ## 🔧 **System Architecture**
 
 ### **Backend (FastAPI)**
-- **Location:** `backend/`
-- **Main File:** `backend/main.py`
+- **Location:** Root directory
+- **Main File:** `main.py`
 - **Database:** SQLite (`codetantra.db`)
 - **Authentication:** JWT tokens
 - **Email:** Gmail SMTP
 
 ### **Frontend (HTML/CSS/JS)**
-- **Location:** `frontend/`
+- **Location:** Root directory (same as backend)
 - **Served by:** FastAPI static files
 - **Access:** Root URL of the service
 
@@ -274,12 +273,20 @@ sqlite3 codetantra.db
 ### **File Structure**
 ```
 CodetantraCheat/
-├── backend/           # FastAPI backend
-│   ├── main.py       # Main application
-│   ├── models.py     # Database models
-│   ├── auth.py       # Authentication
-│   └── database.py   # Database setup
-├── frontend/         # HTML/CSS/JS frontend
+├── main.py           # Main FastAPI application
+├── models.py         # Database models
+├── auth.py           # Authentication
+├── database.py       # Database setup
+├── email_service.py  # Email service
+├── index.html        # Main page
+├── login.html        # Login page
+├── signup.html       # Registration page
+├── dashboard.html    # User dashboard
+├── admin.html        # Admin panel
+├── forgot-password.html # Password reset
+├── assets/           # CSS, JS, images
+│   ├── style.css    # Styles
+│   └── script.js    # JavaScript
 ├── desktop-app/      # Tkinter desktop app
 ├── requirements.txt  # Python dependencies
 └── README.md        # This file

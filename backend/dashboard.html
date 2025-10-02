@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CodeTantra Automation</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <div class="logo">CT</div>
+                <span class="brand-name">CodeTantra Automation</span>
+            </div>
+            <div class="nav-links">
+                <span id="userEmail" class="user-email"></span>
+                <button onclick="logout()" class="btn btn-outline">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="container">
+            <h1>Dashboard</h1>
+            
+            <div class="dashboard-grid">
+                <!-- Credits Card -->
+                <div class="dashboard-card credits-card">
+                    <h2>Your Credits</h2>
+                    <div class="credits-display">
+                        <span id="creditsBalance" class="credits-number">0</span>
+                        <span class="credits-label">credits</span>
+                    </div>
+                    <p class="credits-info">Each code completion uses 5 credits, other problems use 3 credits</p>
+                </div>
+
+                <!-- Referral Card -->
+                <div class="dashboard-card">
+                    <h2>Refer Friends</h2>
+                    <p>Share your referral code and earn 70 credits for each signup!</p>
+                    <div class="referral-code-box">
+                        <input type="text" id="referralCode" readonly>
+                        <button onclick="copyReferralCode()" class="btn btn-primary">Copy</button>
+                    </div>
+                </div>
+
+                <!-- Download Card -->
+                <div class="dashboard-card download-card">
+                    <h2>Desktop Application</h2>
+                    <p>Download the automation tool to start solving problems</p>
+                    <button onclick="downloadApp()" class="btn btn-primary btn-large">
+                        Download for Windows
+                    </button>
+                    <p class="download-note">Latest version: v1.0.0</p>
+                </div>
+
+                <!-- Usage Stats Card -->
+                <div class="dashboard-card">
+                    <h2>Usage Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="totalProblems">0</span>
+                            <span class="stat-label">Problems Solved</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="creditsUsed">0</span>
+                            <span class="stat-label">Credits Used</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage History -->
+            <div class="dashboard-section">
+                <h2>Recent Activity</h2>
+                <div class="table-container">
+                    <table class="usage-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Problem Type</th>
+                                <th>Status</th>
+                                <th>Credits Used</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usageHistory">
+                            <tr>
+                                <td colspan="4" class="no-data">No activity yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user'));
+
+        if (!token || !user) {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('userEmail').textContent = user.email;
+
+        async function loadDashboard() {
+            try {
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+
+                const profileRes = await fetch(`${API_URL}/api/user/profile`, { headers });
+                if (profileRes.ok) {
+                    const profile = await profileRes.json();
+                    document.getElementById('creditsBalance').textContent = profile.credits;
+                    document.getElementById('referralCode').value = profile.referral_code;
+                }
+
+                const historyRes = await fetch(`${API_URL}/api/user/usage-history`, { headers });
+                if (historyRes.ok) {
+                    const history = await historyRes.json();
+                    displayUsageHistory(history.logs);
+                    updateStats(history.logs);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        function displayUsageHistory(logs) {
+            const tbody = document.getElementById('usageHistory');
+            if (logs.length === 0) return;
+
+            tbody.innerHTML = logs.slice(0, 10).map(log => `
+                <tr>
+                    <td>${new Date(log.created_at).toLocaleString()}</td>
+                    <td>${log.problem_type}</td>
+                    <td><span class="status ${log.success ? 'success' : 'failed'}">${log.success ? 'Success' : 'Failed'}</span></td>
+                    <td>${log.credits_used}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateStats(logs) {
+            const totalProblems = logs.filter(l => l.success).length;
+            const creditsUsed = logs.reduce((sum, l) => sum + l.credits_used, 0);
+            
+            document.getElementById('totalProblems').textContent = totalProblems;
+            document.getElementById('creditsUsed').textContent = creditsUsed;
+        }
+
+        function copyReferralCode() {
+            const codeInput = document.getElementById('referralCode');
+            codeInput.select();
+            document.execCommand('copy');
+            alert('Referral code copied to clipboard!');
+        }
+
+        function downloadApp() {
+            window.open('https://github.com/YOUR_REPO/releases/latest', '_blank');
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
+

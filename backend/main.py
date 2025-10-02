@@ -73,17 +73,45 @@ class UserResponse(BaseModel):
     referral_code: str
     created_at: datetime
 
-# Mount static files (frontend)
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
+# Mount static files (frontend) - serve from current directory
+import os
+current_dir = os.path.dirname(__file__)
+assets_dir = os.path.join(current_dir, "assets")
+
+# Mount static files for assets (CSS, JS, images)
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+# Serve index.html for root and other HTML files
+@app.get("/")
+async def serve_index():
+    index_path = os.path.join(current_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        return {"status": "ok", "message": "CodeTantra Automation API is running"}
+
+@app.get("/{filename}")
+async def serve_html(filename: str):
+    if filename.endswith('.html'):
+        file_path = os.path.join(current_dir, filename)
+        if os.path.exists(file_path):
+            return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="File not found")
 
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
     database.init_database()
 
-# Health check endpoint
-@app.get("/")
-async def root():
+# Health check endpoint (moved to /api/health to avoid conflict with static files)
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "message": "CodeTantra Automation API is running"}
+
+# Root endpoint for API status
+@app.get("/api/")
+async def api_root():
     return {"status": "ok", "message": "CodeTantra Automation API is running"}
 
 # Authentication endpoints
@@ -160,6 +188,22 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
             db.commit()
     
     return {"message": "Email verified successfully! You can now log in."}
+
+@app.post("/api/auth/verify-email-manual")
+async def verify_email_manual(email: str, db: Session = Depends(get_db)):
+    """Manually verify user email (for testing)"""
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.is_verified:
+        return {"message": "User is already verified"}
+    
+    # Mark user as verified
+    user.is_verified = True
+    db.commit()
+    
+    return {"message": f"Email {email} verified successfully! You can now log in."}
 
 @app.post("/api/auth/login")
 async def login(credentials: UserLogin, db: Session = Depends(get_db)):
