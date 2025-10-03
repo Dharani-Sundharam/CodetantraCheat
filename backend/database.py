@@ -1,6 +1,6 @@
 """
 Database Configuration and Session Management
-PostgreSQL + SQLAlchemy ORM
+PostgreSQL + SQLAlchemy ORM (PostgreSQL ONLY - No SQLite fallback)
 """
 
 from sqlalchemy import create_engine
@@ -10,35 +10,26 @@ from passlib.context import CryptContext
 from contextlib import contextmanager
 import os
 
-# Database URL configuration
-# For production (Render), use environment variable
-# For development, fallback to SQLite
+# Database URL configuration - PostgreSQL ONLY
+# DATABASE_URL must be set as environment variable
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    # Development fallback to SQLite
-    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DATABASE_URL = f"sqlite:///{os.path.join(root_dir, 'codetantra.db')}"
-    print("Using SQLite for development")
-else:
-    # Production PostgreSQL
-    print("Using PostgreSQL for production")
-    # Render provides DATABASE_URL in format: postgresql://user:pass@host:port/dbname
-    # Convert to postgresql+psycopg2:// for SQLAlchemy
-    if DATABASE_URL.startswith("postgresql://"):
-        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+    raise ValueError("DATABASE_URL environment variable is required but not set. Please configure PostgreSQL connection.")
 
-# Create engine with appropriate settings
-if "sqlite" in DATABASE_URL:
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-else:
-    # PostgreSQL settings
-    engine = create_engine(
-        DATABASE_URL,
-        pool_pre_ping=True,  # Verify connections before use
-        pool_recycle=300,    # Recycle connections every 5 minutes
-        echo=False           # Set to True for SQL debugging
-    )
+# Convert to postgresql+psycopg2:// for SQLAlchemy
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+print("Using PostgreSQL for production")
+
+# Create PostgreSQL engine
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,  # Verify connections before use
+    pool_recycle=300,    # Recycle connections every 5 minutes
+    echo=False           # Set to True for SQL debugging
+)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
