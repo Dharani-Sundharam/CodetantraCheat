@@ -38,7 +38,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def create_tables():
     """Create all database tables (safe to run multiple times)"""
     Base.metadata.create_all(bind=engine)
-    print("Database tables checked/created successfully")
 
 def get_db():
     """Get database session"""
@@ -60,55 +59,24 @@ def get_db_context():
 def create_admin_user():
     """Create default admin user with unlimited credits"""
     with get_db_context() as db:
-        # Check if admin exists by email
         admin = db.query(User).filter(User.email == "admin@codetantra.ac.in").first()
         if not admin:
-            # Check if ADMIN referral code exists
-            existing_admin = db.query(User).filter(User.referral_code == "ADMIN").first()
-            if existing_admin:
-                # Update existing admin to new email
-                existing_admin.email = "admin@codetantra.ac.in"
-                existing_admin.name = "Admin"
-                existing_admin.college_name = "System"
-                existing_admin.age = 25
-                existing_admin.password_hash = pwd_context.hash("admin123")
-                existing_admin.credits = 999999
-                existing_admin.is_admin = True
-                db.commit()
-                print("Admin user updated: admin@codetantra.ac.in / admin123")
-            else:
-                # Create new admin
-                admin = User(
-                    name="Admin",
-                    email="admin@codetantra.ac.in",
-                    college_name="System",
-                    age=25,
-                    password_hash=pwd_context.hash("admin123"),
-                    credits=999999,
-                    is_admin=True,
-                    referral_code="ADMIN"
-                )
-                db.add(admin)
-                db.commit()
-                print("Admin user created: admin@codetantra.ac.in / admin123")
-        else:
-            print("Admin user already exists")
+            admin = User(
+                name="Admin",
+                email="admin@codetantra.ac.in",
+                college_name="System",
+                age=25,
+                password_hash=pwd_context.hash("admin123"),
+                credits=999999,
+                is_admin=True,
+                referral_code="ADMIN"
+            )
+            db.add(admin)
+            db.commit()
 
 def init_database():
-    """Initialize database with tables and admin user (optimized)"""
-    from sqlalchemy import inspect
-    
-    # Check if tables already exist
-    inspector = inspect(engine)
-    existing_tables = inspector.get_table_names()
-    
-    if 'users' in existing_tables:
-        print("Database tables already exist - skipping creation")
-    else:
-        print("Creating database tables...")
-        create_tables()
-    
-    # Always check/create admin user (safe operation)
+    """Initialize database - simple and clean"""
+    create_tables()
     create_admin_user()
 
 if __name__ == "__main__":
