@@ -53,3 +53,6 @@ credentials.py
 .qoder/rules/byterover-rules.md
 .augment/rules/byterover-rules.md
 codetantra.db
+
+# Batch files (for local setup)
+*.bat
