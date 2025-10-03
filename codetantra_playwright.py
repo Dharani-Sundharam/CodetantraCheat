@@ -500,7 +500,7 @@ class CodeTantraPlaywrightAutomation:
             return None
             
     async def check_problems_match(self):
-        """Check if both browsers are on the same problem"""
+        """Check if both browsers are on the same problem (without clicking module questions)"""
         print("Checking if problems match...")
         
         num_answers = await self.get_current_problem_number(self.page_answers)
@@ -511,23 +511,20 @@ class CodeTantraPlaywrightAutomation:
         
         if num_answers and num_target and num_answers == num_target:
             print("✓ Both accounts are on the same problem")
-            
-            # Check if we've reached a Quiz (unit finished) - COMMENTED OUT
-            # if await self.check_for_quiz():
-            #     print("🎯 QUIZ DETECTED - Unit finished!")
-            #     self.show_unit_finished_popup()
-            #     return False  # Stop automation
-            
-            # If it's a module question (not x.x.x), click to get back to x.x.x format
-            if not re.match(r'^\d+\.\d+\.\d+', num_answers):
-                print("  Module question detected - clicking to get x.x.x format...")
-                await self.click_module_question(self.page_answers)
-                await self.click_module_question(self.page_target)
-                print("  ✓ Clicked module questions to return to x.x.x format\n")
-            
             return True
         else:
             return False
+    
+    async def handle_module_question_if_needed(self):
+        """Handle module questions by clicking to get x.x.x format (only when processing a problem)"""
+        num_answers = await self.get_current_problem_number(self.page_answers)
+        
+        # If it's a module question (not x.x.x), click to get back to x.x.x format
+        if num_answers and not re.match(r'^\d+\.\d+\.\d+', num_answers):
+            print("  Module question detected - clicking to get x.x.x format...")
+            await self.click_module_question(self.page_answers)
+            await self.click_module_question(self.page_target)
+            print("  ✓ Clicked module questions to return to x.x.x format")
     
     # COMMENTED OUT - Quiz detection functions
     # async def check_for_quiz(self):
@@ -801,30 +798,6 @@ class CodeTantraPlaywrightAutomation:
             print(f"⚠ Submission verification error: {e}")
             return False
     
-    async def cleanup_extra_brackets(self, editor):
-        """Clean up any remaining auto-closed brackets by pressing Delete repeatedly for 12 seconds"""
-        try:
-            print("  🧹 Cleaning up extra brackets (12 seconds, 20ms intervals)...")
-            
-            import time
-            
-            # Focus the editor first
-            await editor.click()
-            await self.page_target.wait_for_timeout(100)
-            
-            # Press delete repeatedly for 12 seconds with 20ms intervals (no cursor positioning)
-            start_time = time.time()
-            delete_duration = 12  # 12 seconds
-            interval = 0.02  # 20ms = 0.02 seconds
-            
-            while time.time() - start_time < delete_duration:
-                await editor.press("Delete")
-                await self.page_target.wait_for_timeout(20)  # 20ms interval
-            
-            print("  ✓ Cleanup complete (12 seconds of repeated Delete presses)")
-            
-        except Exception as e:
-            print(f"  ⚠ Cleanup failed: {e}")
     
     async def verify_submission_with_test_case(self):
         """Verify submission by checking for test case success messages - prioritizes text-based verification"""
@@ -962,6 +935,9 @@ class CodeTantraPlaywrightAutomation:
                 'error': error_msg
             })
             return False
+        
+        # Handle module questions if needed (only when processing a problem)
+        await self.handle_module_question_if_needed()
         
         # Detect question type for appropriate handling
         question_type = await self.detect_question_type(self.page_answers)

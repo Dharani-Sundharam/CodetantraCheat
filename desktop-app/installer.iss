@@ -4,7 +4,7 @@
 #define MyAppName "CodeTantra Automation Pro"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "CodeTantra Automation"
-#define MyAppURL "https://github.com/YOUR_USERNAME/YOUR_REPO"
+#define MyAppURL "https://github.com/CodeTantraAutomation"
 #define MyAppExeName "CodeTantraAutomation.exe"
 
 [Setup]
@@ -35,8 +35,6 @@ PrivilegesRequiredOverridesAllowed=dialog
 
 ; Wizard appearance
 WizardStyle=modern
-WizardImageFile=compiler:WizModernImage-IS.bmp
-WizardSmallImageFile=compiler:WizModernSmallImage-IS.bmp
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -52,9 +50,14 @@ Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; Additional files (if any)
 Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; README and license
+; README and documentation
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion; AfterInstall: CreateAppDataFolder
+Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{app}\..\README.md'))
+
+; Configuration files
+Source: "..\config.py"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{app}\..\config.py'))
+Source: "..\credentials.py"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{app}\..\credentials.py'))
+Source: "..\comment_remover.py"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{app}\..\comment_remover.py'))
 
 [Icons]
 ; Start Menu
@@ -88,12 +91,7 @@ end;
 function InitializeSetup(): Boolean;
 begin
   Result := True;
-  if not IsDotNetInstalled(net45, 0) then
-  begin
-    MsgBox('This application requires Microsoft .NET Framework 4.5 or higher.'#13#13
-      'Please install it and then run this setup again.', mbError, MB_OK);
-    Result := False;
-  end;
+  // No special requirements for Python-based application
 end;
 
 [UninstallDelete]

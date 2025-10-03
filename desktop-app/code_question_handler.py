@@ -14,25 +14,6 @@ class CodeQuestionHandler:
         self.page_target = page_target
         self.comment_remover = comment_remover or CommentRemover()
     
-    async def maximize_and_zoom_browser(self, page, zoom_level=0.5):
-        """Maximize browser window and set zoom level for better code visibility"""
-        try:
-            print(f"  Maximizing window and setting zoom to {zoom_level*100}%...")
-            
-            # Maximize the window
-            await page.evaluate("""
-                window.moveTo(0, 0);
-                window.resizeTo(screen.width, screen.height);
-            """)
-            
-            # Set zoom level for better code visibility
-            await page.evaluate(f"document.body.style.zoom = '{zoom_level}'")
-            await page.evaluate(f"document.documentElement.style.zoom = '{zoom_level}'")
-            
-            print(f"  ✓ Window maximized and zoomed to {zoom_level*100}%")
-            
-        except Exception as e:
-            print(f"  ⚠ Could not maximize/zoom window: {e}")
     
     
     def detect_code_language(self, code):
@@ -416,41 +397,6 @@ class CodeQuestionHandler:
             print(f"  ⚠ Error in type_code_safely: {e}")
             raise
     
-    async def cleanup_trailing_braces(self, editor):
-        """Clean up any trailing '}' characters after typing code"""
-        try:
-            # Get current content to check for trailing braces
-            current_content = await editor.text_content()
-            if not current_content:
-                return
-            
-            # Count trailing braces
-            trailing_braces = 0
-            for char in reversed(current_content.strip()):
-                if char == '}':
-                    trailing_braces += 1
-                else:
-                    break
-            
-            if trailing_braces > 0:
-                # Hold delete key for 12 seconds to remove all trailing braces
-                await editor.press("Delete", delay=12000)  # Hold delete for 12 seconds
-                
-                # Verify cleanup - check if there are still characters after cursor
-                await self.page_target.wait_for_timeout(200)
-                final_content = await editor.text_content()
-                
-                # If there are still trailing braces, try a more aggressive approach
-                if final_content and final_content.strip().endswith('}'):
-                    # Select all and check for trailing braces
-                    await editor.press("Control+End")  # Go to end
-                    await self.page_target.wait_for_timeout(100)
-                    
-                    # Hold delete for another 12 seconds
-                    await editor.press("Delete", delay=12000)
-                
-        except Exception as e:
-            pass  # Silent error handling
     
     async def paste_code_to_target(self, code):
         """Paste code into the target account editor with enhanced reliability"""
@@ -647,8 +593,6 @@ class CodeQuestionHandler:
                     await editor.press("Enter")
                     await self.page_target.wait_for_timeout(50)  # Slightly slower for reliability
             
-            # Clean up any trailing braces
-            await self.cleanup_trailing_braces(editor)
             
             # Verify what was actually typed
             try:
