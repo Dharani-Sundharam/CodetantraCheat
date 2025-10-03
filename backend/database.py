@@ -36,9 +36,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_tables():
-    """Create all database tables"""
+    """Create all database tables (safe to run multiple times)"""
     Base.metadata.create_all(bind=engine)
-    print("Database tables created successfully")
+    print("Database tables checked/created successfully")
 
 def get_db():
     """Get database session"""
@@ -95,8 +95,20 @@ def create_admin_user():
             print("Admin user already exists")
 
 def init_database():
-    """Initialize database with tables and admin user"""
-    create_tables()
+    """Initialize database with tables and admin user (optimized)"""
+    from sqlalchemy import inspect
+    
+    # Check if tables already exist
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+    
+    if 'users' in existing_tables:
+        print("Database tables already exist - skipping creation")
+    else:
+        print("Creating database tables...")
+        create_tables()
+    
+    # Always check/create admin user (safe operation)
     create_admin_user()
 
 if __name__ == "__main__":
