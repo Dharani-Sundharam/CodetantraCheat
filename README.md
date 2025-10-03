@@ -1,251 +1,235 @@
-# CodeTantra Automation Tool
+# CodeTantra Automation
 
-A powerful automation tool that intelligently handles different types of code completion problems on CodeTantra platform using Playwright browser automation.
+A powerful automation tool for CodeTantra platform that helps automate coding assignments and assessments.
 
-## 🚀 Features
+## 🚀 Quick Start
 
-### 🎨 Modern Web Interface
-- **Beautiful UI**: Professional, modern interface built with Streamlit
-- **Real-time Dashboard**: Live progress monitoring with visual feedback
-- **Multiple UI Options**: Basic, Advanced, and Terminal interfaces
-- **Interactive Analytics**: Charts, graphs, and performance metrics
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
+### For Users:
+1. **Download** `install.bat` and `run.bat` files
+2. **Run** `install.bat` to clone repository and install dependencies
+3. **Configure** your credentials in `CodeTantraAutomation/credentials.py`
+4. **Run** `run.bat` to start the application
 
-### 🤖 Automation Features
-- **Smart Code Type Detection**: Automatically detects Type 1 (fully editable) vs Type 2 (template-based) code problems
-- **Intelligent Code Extraction**: Extracts complete code from answers account with proper scrolling and zoom
-- **Comment Removal**: Automatically cleans code by removing comments using language-specific patterns
-- **Robust Error Handling**: Comprehensive error handling with detailed logging and fallback mechanisms
-- **Multi-Language Support**: Supports Java, C++, C, Python, JavaScript, and more
-- **Auto-Close Bracket Handling**: Smart handling of CodeMirror's auto-closing brackets and quotes
-- **Progress Tracking**: Real-time progress monitoring with detailed console output
+### For Developers:
+1. **Clone** the repository: `git clone -b desktop-app <repository-url>`
+2. **Install** Python 3.8+ and dependencies: `pip install -r requirements.txt`
+3. **Configure** credentials in `credentials.py`
+4. **Run** the application: `python desktop-app/main.py`
+
+## 📋 System Requirements
+
+- **Windows 10/11**
+- **Python 3.8+**
+- **Internet connection** (for API calls and browser installation)
+- **Administrator rights** (for browser installation)
+
+## 🛠️ Installation
+
+### Automatic Installation (Recommended)
+```bash
+# Run the installer (clones repo and installs everything)
+install.bat
+```
+
+### Manual Installation
+```bash
+# Clone the repository
+git clone -b desktop-app <repository-url>
+cd CodeTantraAutomation
+
+# Install Python packages
+pip install -r requirements.txt
+
+# Install browsers
+python -m playwright install firefox chromium webkit
+```
+
+## 🎯 Usage
+
+### Starting the Application
+```bash
+# Simple way (from parent directory)
+run.bat
+
+# Or directly (from CodeTantraAutomation directory)
+python desktop-app/main.py
+```
+
+### Configuration
+1. **Edit** `CodeTantraAutomation/credentials.py` with your CodeTantra credentials
+2. **Configure** `CodeTantraAutomation/config.py` for API settings
+3. **Run** the application
+
+## 🔒 Application Features
+
+### Core Functionality
+- **Automated problem solving** - Handles various question types
+- **Browser automation** - Uses Playwright for reliable automation
+- **API integration** - Real-time credit tracking and user management
+- **Modern UI** - Dark-themed desktop interface
 
 ## 📁 Project Structure
 
 ```
-CodeTantraCheat/
-├── codetantra_playwright.py    # Main automation script
-├── config.py                   # Configuration settings
-├── credentials.py              # Login credentials (create this)
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── scripts/                    # Additional scripts
-│   ├── codetantra_automation.py
-│   └── run.bat
-├── utils/                      # Utility tools
-│   ├── comment_remover.py
-│   ├── interactive_comment_remover.py
-│   ├── simple_comment_remover.py
-│   ├── comment_remover.bat
-│   └── question_type_detector.py
-├── debug_scripts/              # Debug and testing tools
-│   ├── codemirror_test.py
-│   ├── debug_page.py
-│   ├── debug_problem_number.py
-│   ├── playwright_codegen.py
-│   ├── setup_playwright.py
-│   └── test_connection.py
-└── docs/                       # Documentation
-    ├── QUICK_START.md
-    ├── SETUP_GUIDE.md
-    └── [other documentation files]
+CodeTantraAutomation/
+├── desktop-app/              # Main application
+│   ├── main.py              # Desktop UI
+│   ├── automation_runner.py # Automation orchestrator
+│   ├── code_question_handler.py # Code handling
+│   ├── api_client.py        # API communication
+│   ├── config_manager.py    # Configuration management
+│   ├── config.py           # Application configuration
+│   ├── credentials.py      # User credentials
+│   ├── comment_remover.py  # Code processing utility
+│   └── codetantra_playwright.py # Main automation logic
+├── install.bat            # Installation script
+├── run.bat               # Application launcher
+└── README.md             # This file
 ```
 
-## 🛠️ Installation
+## 🔧 Features
 
-1. **Clone or download** this repository
-2. **Install Python dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Create credentials file**:
-   ```bash
-   cp credentials_template.py credentials.py
-   ```
-4. **Edit credentials.py** with your CodeTantra login details
+### Automation Capabilities
+- **Code completion** questions
+- **Multiple choice** questions  
+- **Fill in the blank** questions
+- **Automatic submission** and verification
+- **Error handling** and retry logic
 
-## ⚙️ Configuration
+### User Interface
+- **Modern dark theme** Tkinter interface
+- **Real-time progress** tracking
+- **Detailed reporting** and statistics
+- **Credit system** integration
+- **API connectivity** status
 
-### 1. Credentials Setup
-Create `credentials.py` with your login information:
-```python
-# CodeTantra login credentials
-ANSWERS_ACCOUNT = {
-    "username": "your_answers_username",
-    "password": "your_answers_password"
-}
+### Browser Automation
+- **Playwright integration** for reliable automation
+- **Multi-browser support** (Firefox, Chromium, WebKit)
+- **Automatic browser** installation
+- **Cross-platform** compatibility
 
-TARGET_ACCOUNT = {
-    "username": "your_target_username", 
-    "password": "your_target_password"
-}
+## 📊 Credit System
 
-LOGIN_URL = "https://your-codetantra-url.com"
-```
+The application includes a credit system that:
+- **Tracks usage** by question type
+- **Calculates costs** automatically
+- **Integrates with API** for real-time deduction
+- **Provides detailed** usage reports
 
-### 2. Configuration Options
-Edit `config.py` to customize:
-- Browser settings
-- Timing delays
-- Error handling preferences
-- Debug options
+### Credit Rates:
+- **Code-based questions**: 5 credits
+- **Non-code questions**: 3 credits
+- **Failed/unsolved**: 1 credit
 
-## 🚀 Usage
+## 🛡️ Application Protection
 
-### 🎨 Modern Web UI (Recommended)
-```bash
-# Universal launcher with options
-python launch.py
+### Built-in Features
+1. **API Authentication**
+   - Secure login system
+   - Token-based authentication
+   - User session management
 
-# Or launch specific UI directly
-python launch_ui.py          # Basic UI
-streamlit run app.py         # Basic UI
-streamlit run app_advanced.py # Advanced UI
-```
+2. **Credential Security**
+   - Local credential storage
+   - Password masking in UI
+   - Secure configuration management
 
-### 💻 Terminal Usage
-```bash
-# Simple runner
-python run.py
+3. **Error Handling**
+   - Comprehensive error catching
+   - Graceful failure handling
+   - User-friendly error messages
 
-# Direct execution
-python codetantra_playwright.py
-```
+4. **Data Validation**
+   - Input validation
+   - Configuration verification
+   - API response validation
 
-### 🎯 UI Features
-- **🌟 Basic UI**: Clean, simple interface with real-time logs
-- **🚀 Advanced UI**: Full-featured dashboard with analytics and charts
-- **💻 Terminal UI**: Command-line interface for power users
-
-## 🎯 How It Works
-
-### 1. **Type Detection**
-- Uses RESET button method to detect code type
-- Type 1: Fully editable code (clear and paste)
-- Type 2: Template-based code (comment static lines, then paste)
-
-### 2. **Code Extraction**
-- Maximizes browser window for better visibility
-- Scrolls through entire editor to load all content
-- Extracts code line by line with structure preservation
-
-### 3. **Code Processing**
-- Detects programming language automatically
-- Removes comments using language-specific patterns
-- Handles auto-closing brackets intelligently
-
-### 4. **Code Pasting**
-- Type 1: Direct paste with error handling
-- Type 2: Comment static lines, then paste complete code
-- Verifies successful pasting
-
-### 5. **Submission & Verification**
-- Submits solution with retry mechanism
-- Verifies test case success
-- Provides detailed progress reporting
-
-## 🔧 Utility Tools
-
-### Comment Remover
-```bash
-# Interactive mode
-python utils/interactive_comment_remover.py
-
-# Simple mode
-python utils/simple_comment_remover.py
-
-# Command line mode
-python utils/comment_remover.py code.java -l java -o clean_code.java
-```
-
-### Question Type Detector
-```bash
-python utils/question_type_detector.py
-```
-
-## 📊 Supported Languages
-
-- **Java** - Primary support with full auto-detection
-- **C/C++** - Complete support with #include detection
-- **Python** - Full support with def/import detection
-- **JavaScript** - Complete support with function detection
-- **And more** - Extensible language detection system
-
-## 🐛 Debugging
-
-### Debug Scripts
-- `debug_scripts/codemirror_test.py` - Test CodeMirror extraction
-- `debug_scripts/debug_page.py` - Debug page elements
-- `debug_scripts/test_connection.py` - Test browser connection
-
-### Console Output
-The tool provides detailed console output:
-```
-Setting up Playwright browsers...
-  Maximizing window and setting zoom to 60%...
-  ✓ Window maximized and zoomed to 60%
-✓ First browser window opened (answers account - left)
-
-Extracting structured lines from answers account...
-  Detected language: java
-  Cleaning code using comment remover...
-  ✓ Code cleaned - removed comments
-  Total lines to type: 15
-  Typing line 1/15: public class Main {
-  ✓ Line 1 typed successfully
-```
-
-## ⚠️ Important Notes
-
-1. **Educational Purpose Only**: This tool is for educational purposes
-2. **Use Responsibly**: Follow your institution's academic integrity policies
-3. **Browser Requirements**: Requires Firefox browser
-4. **Network**: Stable internet connection required
-5. **Credentials**: Keep your credentials secure
-
-## 🔒 Security
-
-- Credentials are stored locally in `credentials.py`
-- No data is sent to external servers
-- All processing happens locally on your machine
-
-## 📝 Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-1. **Browser not launching**:
-   - Install Firefox browser
-   - Check Playwright installation: `playwright install firefox`
+#### "Python not found"
+- Install Python 3.8+ from [python.org](https://www.python.org/downloads/)
+- Make sure to check "Add Python to PATH" during installation
 
-2. **Login failures**:
-   - Verify credentials in `credentials.py`
-   - Check if CodeTantra URL is correct
+#### "Packages not installed"
+- Run `install.bat` to install all dependencies
+- Or install manually: `pip install -r requirements.txt`
 
-3. **Code not typing completely**:
-   - Check browser zoom settings
-   - Verify CodeMirror editor is accessible
-   - Check console output for specific errors
+#### "Browser installation failed"
+- Check internet connection
+- Run as administrator
+- Try manual installation: `python -m playwright install firefox`
 
-4. **Submission failures**:
-   - Ensure both accounts are on the same problem
-   - Check if submit button is visible
-   - Verify test case requirements
+#### "Application crashes or errors"
+- Check Python version compatibility
+- Verify all dependencies are installed
+- Check configuration files for errors
 
 ### Getting Help
+1. **Check** the troubleshooting section above
+2. **Verify** system requirements
+3. **Test** the application with sample data
+4. **Contact** support if issues persist
 
-1. Check console output for detailed error messages
-2. Use debug scripts to isolate issues
-3. Verify all dependencies are installed
-4. Check browser and network connectivity
+## 📝 Configuration
+
+### Credentials (`CodeTantraAutomation/credentials.py`)
+```python
+LOGIN_URL = "https://your-codetantra-url.com"
+ANSWERS_ACCOUNT = {
+    "username": "your_username",
+    "password": "your_password"
+}
+TARGET_ACCOUNT = {
+    "username": "your_username", 
+    "password": "your_password"
+}
+```
+
+### API Configuration (`CodeTantraAutomation/config.py`)
+```python
+API_BASE_URL = "https://your-api-url.com"
+API_KEY = "your_api_key"
+CREDIT_SYSTEM_ENABLED = True
+```
+
+## 🚨 Important Notes
+
+### Legal and Ethical Use
+- **Use responsibly** and in accordance with platform terms
+- **Respect** academic integrity policies
+- **Follow** local laws and regulations
+- **Don't abuse** the automation system
+
+### Best Practices
+- **Keep credentials** secure and private
+- **Don't share** your API keys
+- **Use** official sources only
+- **Test** with sample data first
 
 ## 📄 License
 
-This project is for educational purposes only. Use responsibly and in accordance with your institution's academic integrity policies.
+This project is for educational purposes only. Please use responsibly and in accordance with all applicable terms of service and laws.
 
 ## 🤝 Contributing
 
-This is a personal project, but suggestions and improvements are welcome!
+1. **Fork** the repository
+2. **Create** a feature branch
+3. **Make** your changes
+4. **Test** thoroughly
+5. **Submit** a pull request
+
+## 📞 Support
+
+For support and questions:
+- **Check** the troubleshooting section
+- **Review** the documentation
+- **Open** an issue on GitHub
+- **Contact** the development team
 
 ---
 
-**Disclaimer**: This tool is designed for educational purposes. Users are responsible for ensuring their use complies with their institution's academic integrity policies.
+**CodeTantra Automation v1.0.0**  
+*Automate with confidence, learn with integrity*

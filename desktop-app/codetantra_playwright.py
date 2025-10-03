@@ -20,6 +20,16 @@ except ImportError:
     AUTO_LOGIN = False
     print("⚠ credentials.py not found. Manual login will be required.")
 
+# Import the code question handler
+try:
+    from desktop_app.code_question_handler import CodeQuestionHandler
+except ImportError:
+    # Fallback for when running from root directory
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'desktop-app'))
+    from code_question_handler import CodeQuestionHandler
+
 
 class CodeTantraPlaywrightAutomation:
     def __init__(self, auto_login=False):
@@ -30,6 +40,38 @@ class CodeTantraPlaywrightAutomation:
         self.auto_login = auto_login
         self.error_log = []  # Track errors with problem numbers
         self.comment_remover = CommentRemover()
+        self.code_handler = None  # Will be initialized after browsers are set up
+        
+        # Problem tracking for detailed reporting
+        self.problem_tracker = {
+            'code_completion': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'multiple_choice': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'fill_blank': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'other': {'solved': 0, 'failed': 0, 'skipped': 0}
+        }
+    
+    def track_problem_result(self, question_type: str, result: str):
+        """Track problem result by type"""
+        if question_type not in self.problem_tracker:
+            question_type = 'other'
+        
+        if result in ['solved', 'failed', 'skipped']:
+            self.problem_tracker[question_type][result] += 1
+    
+    def get_problem_summary(self):
+        """Get detailed problem summary"""
+        total_solved = sum(tracker['solved'] for tracker in self.problem_tracker.values())
+        total_failed = sum(tracker['failed'] for tracker in self.problem_tracker.values())
+        total_skipped = sum(tracker['skipped'] for tracker in self.problem_tracker.values())
+        
+        return {
+            'total': {
+                'solved': total_solved,
+                'failed': total_failed,
+                'skipped': total_skipped
+            },
+            'by_type': self.problem_tracker
+        }
     
     async def maximize_and_zoom_browser(self, page, zoom_level=0.5):
         """Maximize browser window and set zoom level for better code visibility"""
@@ -168,6 +210,28 @@ class CodeTantraPlaywrightAutomation:
         """Initialize two separate browser instances"""
         print("Setting up Playwright browsers...")
 
+        # Check and install browsers if needed (for packaged executable)
+        try:
+            # Try to launch a test browser to check if browsers are available
+            test_browser = await self.playwright.firefox.launch(headless=True)
+            await test_browser.close()
+        except Exception as e:
+            print("⚠ Browsers not found, attempting to install...")
+            try:
+                # Install browsers for the current user
+                import subprocess
+                import sys
+                result = subprocess.run([sys.executable, "-m", "playwright", "install", "firefox"], 
+                                      capture_output=True, text=True, timeout=300)
+                if result.returncode == 0:
+                    print("✅ Firefox browser installed successfully")
+                else:
+                    print(f"❌ Failed to install browsers: {result.stderr}")
+                    raise Exception("Browser installation failed")
+            except Exception as install_error:
+                print(f"❌ Browser installation error: {install_error}")
+                raise Exception("Cannot proceed without browsers. Please install manually: playwright install firefox")
+
         # Get screen size and split in half
         user32 = ctypes.windll.user32
         screen_width = user32.GetSystemMetrics(0)
@@ -178,10 +242,10 @@ class CodeTantraPlaywrightAutomation:
 
         # Create first browser (answers - left half)
         self.browser_answers = await self.playwright.firefox.launch(headless=False)
-        context_answers = await self.browser_answers.new_context(
+        self.context_answers = await self.browser_answers.new_context(
             viewport={'width': half_width, 'height': window_height}
         )
-        self.page_answers = await context_answers.new_page()
+        self.page_answers = await self.context_answers.new_page()
         
         # Position and resize using JavaScript
         await self.page_answers.evaluate(f"""
@@ -196,10 +260,10 @@ class CodeTantraPlaywrightAutomation:
 
         # Create second browser (target - right half)
         self.browser_target = await self.playwright.firefox.launch(headless=False)
-        context_target = await self.browser_target.new_context(
+        self.context_target = await self.browser_target.new_context(
             viewport={'width': half_width, 'height': window_height}
         )
-        self.page_target = await context_target.new_page()
+        self.page_target = await self.context_target.new_page()
         
         # Position and resize using JavaScript
         await self.page_target.evaluate(f"""
@@ -211,6 +275,9 @@ class CodeTantraPlaywrightAutomation:
         await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
         
         print("✓ Second browser window opened (target account - right)")
+        
+        # Initialize code question handler
+        self.code_handler = CodeQuestionHandler(self.page_answers, self.page_target, self.comment_remover)
         
     async def navigate_to_codetantra(self, url):
         """Navigate both browsers to Code Tantra"""
@@ -455,7 +522,7 @@ class CodeTantraPlaywrightAutomation:
             return None
             
     async def check_problems_match(self):
-        """Check if both browsers are on the same problem"""
+        """Check if both browsers are on the same problem (without clicking module questions)"""
         print("Checking if problems match...")
         
         num_answers = await self.get_current_problem_number(self.page_answers)
@@ -466,23 +533,20 @@ class CodeTantraPlaywrightAutomation:
         
         if num_answers and num_target and num_answers == num_target:
             print("✓ Both accounts are on the same problem")
-            
-            # Check if we've reached a Quiz (unit finished) - COMMENTED OUT
-            # if await self.check_for_quiz():
-            #     print("🎯 QUIZ DETECTED - Unit finished!")
-            #     self.show_unit_finished_popup()
-            #     return False  # Stop automation
-            
-            # If it's a module question (not x.x.x), click to get back to x.x.x format
-            if not re.match(r'^\d+\.\d+\.\d+', num_answers):
-                print("  Module question detected - clicking to get x.x.x format...")
-                await self.click_module_question(self.page_answers)
-                await self.click_module_question(self.page_target)
-                print("  ✓ Clicked module questions to return to x.x.x format\n")
-            
             return True
         else:
             return False
+    
+    async def handle_module_question_if_needed(self):
+        """Handle module questions by clicking to get x.x.x format (only when processing a problem)"""
+        num_answers = await self.get_current_problem_number(self.page_answers)
+        
+        # If it's a module question (not x.x.x), click to get back to x.x.x format
+        if num_answers and not re.match(r'^\d+\.\d+\.\d+', num_answers):
+            print("  Module question detected - clicking to get x.x.x format...")
+            await self.click_module_question(self.page_answers)
+            await self.click_module_question(self.page_target)
+            print("  ✓ Clicked module questions to return to x.x.x format")
     
     # COMMENTED OUT - Quiz detection functions
     # async def check_for_quiz(self):
@@ -593,394 +657,6 @@ class CodeTantraPlaywrightAutomation:
             print(f"⚠ Error detecting question type: {e}")
             return "unknown"
     
-    async def detect_code_completion_type(self):
-        """Detect if code completion is Type 1 (fully editable) or Type 2 (has static lines)"""
-        try:
-            print("🔍 Detecting code completion type using RESET method...")
-            
-            iframe_target = self.page_target.frame_locator("#course-iframe")
-            
-            # Step 1: Find and click RESET button
-            print("  Looking for RESET button in target account...")
-            reset_button = iframe_target.get_by_role("button", name="RESET")
-            
-            try:
-                await reset_button.wait_for(state="visible", timeout=5000)
-                print("  ✓ RESET button found")
-            except Exception as e:
-                print(f"  ⚠ RESET button not found - assuming Type 1")
-                return {"type": "type1", "static_lines": []}
-            
-            # Step 2: Click RESET
-            print("  Clicking RESET button...")
-            await reset_button.click()
-            await self.page_target.wait_for_timeout(2000)
-            
-            # Step 3: Try to clear all code
-            print("  Attempting to clear all code...")
-            editor = iframe_target.locator("div.cm-content[contenteditable='true']")
-            await editor.click()
-            await self.page_target.wait_for_timeout(500)
-            
-            # Select all and delete
-            await editor.press("Control+a")
-            await self.page_target.wait_for_timeout(300)
-            await editor.press("Delete")
-            await self.page_target.wait_for_timeout(1000)
-            
-            # Step 4: Check remaining content (static lines)
-            print("  Checking for static lines...")
-            lines = iframe_target.locator("div.cm-line")
-            line_count = await lines.count()
-            
-            static_lines = []
-            for i in range(line_count):
-                try:
-                    line = lines.nth(i)
-                    line_text = await line.text_content()
-                    if line_text and line_text.strip():
-                        static_lines.append({
-                            'line_number': i,
-                            'text': line_text,
-                            'stripped': line_text.strip()
-                        })
-                except:
-                    continue
-            
-            # Step 5: Determine type
-            if len(static_lines) == 0:
-                print("  ✓ TYPE 1: Fully editable (no static lines)")
-                return {"type": "type1", "static_lines": []}
-            else:
-                print(f"  ✓ TYPE 2: Has {len(static_lines)} static lines")
-                for sl in static_lines:
-                    print(f"    Static line {sl['line_number']}: {repr(sl['stripped'])}")
-                return {"type": "type2", "static_lines": static_lines}
-            
-        except Exception as e:
-            print(f"⚠ Error detecting code type: {e}")
-            return {"type": "type1", "static_lines": []}
-    
-    async def extract_all_lines_from_answers(self):
-        """Extract all lines from answers account with structure"""
-        try:
-            print("Extracting structured lines from answers account...")
-            
-            # First, maximize and zoom the answers page for better code visibility
-            await self.maximize_and_zoom_browser(self.page_answers, zoom_level=0.5)
-            
-            iframe = self.page_answers.frame_locator("#course-iframe")
-            editor = iframe.locator("div.cm-content[contenteditable='true']")
-            await editor.wait_for(state="visible", timeout=10000)
-            await editor.scroll_into_view_if_needed()
-            
-            # Scroll to top to ensure we get all lines
-            await self.page_answers.evaluate("window.scrollTo(0, 0)")
-            await self.page_answers.wait_for_timeout(500)
-            
-            # Scroll through the entire editor to ensure all lines are loaded
-            await self.scroll_through_editor_iframe(iframe)
-            
-            lines = iframe.locator("div.cm-line")
-            line_count = await lines.count()
-            
-            if line_count == 0:
-                print("⚠ No code lines found in answers editor")
-                return None
-            
-            structured_lines = []
-            for i in range(line_count):
-                try:
-                    line = lines.nth(i)
-                    line_text = await line.text_content()
-                    if line_text is None:
-                        line_text = ""
-                    
-                    structured_lines.append({
-                        'line_number': i,
-                        'text': line_text,
-                        'stripped': line_text.strip()
-                    })
-                except Exception as line_error:
-                    print(f"⚠ Error extracting line {i}: {line_error}")
-                    structured_lines.append({
-                        'line_number': i,
-                        'text': "",
-                        'stripped': ""
-                    })
-            
-            print(f"✓ Extracted {len(structured_lines)} structured lines from answers")
-            return structured_lines
-            
-        except Exception as e:
-            print(f"⚠ Could not extract structured lines: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
-    
-    async def get_code_from_answers(self):
-        """Extract code from the answers account editor with enhanced error handling"""
-        try:
-            print("Extracting code from answers account...")
-            
-            # Switch to iframe first
-            iframe = self.page_answers.frame_locator("#course-iframe")
-            
-            # Find the CodeMirror editor content with better waiting
-            editor = iframe.locator("div.cm-content[contenteditable='true']")
-            await editor.wait_for(state="visible", timeout=10000)
-            
-            # Scroll to editor to ensure it's visible
-            await editor.scroll_into_view_if_needed()
-            
-            # Get all lines with better error handling
-            lines = iframe.locator("div.cm-line")
-            line_count = await lines.count()
-            
-            if line_count == 0:
-                print("⚠ No code lines found in editor")
-                return None
-            
-            code_text = []
-            for i in range(line_count):
-                try:
-                    line = lines.nth(i)
-                    line_text = await line.text_content()
-                    if line_text is None:
-                        line_text = ""
-                    code_text.append(line_text)
-                except Exception as line_error:
-                    print(f"⚠ Error extracting line {i}: {line_error}")
-                    code_text.append("")  # Add empty line to maintain structure
-            
-            full_code = "\n".join(code_text)
-            
-            # Clean up the code (remove extra whitespace but preserve structure)
-            cleaned_code = "\n".join(line.rstrip() for line in full_code.split('\n'))
-            
-            print(f"✓ Extracted {len(code_text)} lines of code")
-            print(f"✓ Code preview: {cleaned_code[:100]}{'...' if len(cleaned_code) > 100 else ''}")
-            return cleaned_code
-            
-        except Exception as e:
-            print(f"⚠ Could not extract code: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
-    
-    def detect_multiline_comment_strategy(self, answers_lines, static_lines):
-        """Detect if static lines are commented with /* ... */ in answers"""
-        try:
-            print("🔍 Detecting comment strategy...")
-            
-            # Build full code from answers
-            full_code = "\n".join(line['text'] for line in answers_lines)
-            
-            # Check for multiline comments
-            has_multiline_start = '/*' in full_code
-            has_multiline_end = '*/' in full_code
-            
-            if not (has_multiline_start and has_multiline_end):
-                print("  ✓ No multiline comments detected - using Strategy A")
-                return "strategy_a"
-            
-            # Check if static lines are inside comments
-            in_comment = False
-            static_texts = [sl['stripped'] for sl in static_lines]
-            commented_static_count = 0
-            
-            for line in answers_lines:
-                text = line['stripped']
-                
-                if '/*' in text:
-                    in_comment = True
-                    continue
-                
-                if '*/' in text:
-                    in_comment = False
-                    continue
-                
-                # Check if this line matches a static line and is in a comment
-                if in_comment:
-                    for static_text in static_texts:
-                        if static_text in text or text in static_text:
-                            commented_static_count += 1
-                            break
-            
-            # If most static lines are commented, use Strategy B
-            if commented_static_count >= len(static_lines) * 0.7:  # 70% threshold
-                print(f"  ✓ {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy B")
-                return "strategy_b"
-            else:
-                print(f"  ✓ Only {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy A")
-                return "strategy_a"
-            
-        except Exception as e:
-            print(f"⚠ Error detecting strategy: {e}")
-            return "strategy_a"
-    
-    def compare_and_find_extra_code(self, answers_lines, static_lines):
-        """Compare answers and static lines to find extra code"""
-        try:
-            print("📊 Comparing lines to find extra code...")
-            
-            static_texts = [sl['stripped'] for sl in static_lines]
-            extra_code = []
-            
-            for ans_line in answers_lines:
-                text = ans_line['stripped']
-                
-                # Skip empty lines
-                if not text:
-                    continue
-                
-                # Skip comment markers
-                if text in ['/*', '*/'] or text.startswith('/*') or text.endswith('*/'):
-                    continue
-                
-                # Check if this line matches any static line
-                is_static = False
-                for static_text in static_texts:
-                    if static_text == text or static_text in text or text in static_text:
-                        is_static = True
-                        break
-                
-                # If not static, it's extra code
-                if not is_static:
-                    extra_code.append(ans_line)
-                    print(f"  Extra code line {ans_line['line_number']}: {repr(text)}")
-            
-            print(f"✓ Found {len(extra_code)} extra code lines")
-            return extra_code
-            
-        except Exception as e:
-            print(f"⚠ Error comparing lines: {e}")
-            return []
-            
-    async def paste_code_to_target(self, code):
-        """Paste code into the target account editor with enhanced reliability"""
-        try:
-            print("Pasting code to target account...")
-            
-            if not code or not code.strip():
-                print("⚠ No code to paste")
-                return False
-            
-            # Detect language and clean the code using comment remover
-            detected_lang = self.detect_code_language(code)
-            print(f"  Detected language: {detected_lang}")
-            print("  Cleaning code using comment remover...")
-            try:
-                cleaned_code = self.comment_remover.process_text(code, detected_lang)
-                print(f"  ✓ Code cleaned - removed comments")
-                code = cleaned_code
-            except Exception as e:
-                print(f"  ⚠ Comment removal failed: {e}, using original code")
-            
-            # First, maximize and zoom the target page for better code visibility
-            await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
-            
-            # Switch to iframe first
-            iframe = self.page_target.frame_locator("#course-iframe")
-            
-            # Find the CodeMirror editor with better waiting
-            editor = iframe.locator("div.cm-content[contenteditable='true']")
-            await editor.wait_for(state="visible", timeout=10000)
-            
-            # Scroll to editor to ensure it's visible
-            await editor.scroll_into_view_if_needed()
-            
-            # Click to focus the editor
-            await editor.click()
-            await self.page_target.wait_for_timeout(500)
-            
-            # Clear existing content more reliably
-            print("  Clearing existing content...")
-            await editor.press("Control+a")
-            await self.page_target.wait_for_timeout(300)
-            await editor.press("Delete")
-            await self.page_target.wait_for_timeout(500)
-            
-            # Method 1: Try using clipboard (Ctrl+V) first
-            try:
-                print("  Attempting clipboard paste...")
-                # Set clipboard content using JavaScript with proper escaping
-                await self.page_target.evaluate("""
-                    (code) => {
-                        navigator.clipboard.writeText(code).then(() => {
-                            console.log('Code copied to clipboard');
-                        }).catch(err => {
-                            console.log('Clipboard failed:', err);
-                        });
-                    }
-                """, code)
-                
-                await self.page_target.wait_for_timeout(500)
-                await editor.press("Control+v")
-                await self.page_target.wait_for_timeout(1000)
-                
-                # Verify paste was successful
-                pasted_content = await editor.text_content()
-                if pasted_content and len(pasted_content.strip()) > 0:
-                    print("✓ Code pasted successfully via clipboard")
-                    return True
-                else:
-                    print("⚠ Clipboard paste failed, trying line-by-line...")
-                    
-            except Exception as clipboard_error:
-                print(f"⚠ Clipboard paste failed: {clipboard_error}")
-                print("  Trying line-by-line method...")
-            
-            # Method 2: Line-by-line typing with better error handling
-            print("  Pasting line by line with improved error handling...")
-            lines = code.split('\n')
-            print(f"  Total lines to type: {len(lines)}")
-            
-            for i, line in enumerate(lines):
-                if line.strip():
-                    print(f"  Typing line {i+1}/{len(lines)}: {line[:50]}{'...' if len(line) > 50 else ''}")
-                    try:
-                        # Use the safer typing method
-                        await self.type_code_safely(editor, line, delay=20)
-                        print(f"  ✓ Line {i+1} typed successfully")
-                    except Exception as e:
-                        print(f"  ⚠ Error typing line {i+1}: {e}")
-                        # Try simple typing as fallback
-                        try:
-                            print(f"  Retrying line {i+1} with simple typing...")
-                            await editor.type(line, delay=30)
-                            print(f"  ✓ Line {i+1} typed with fallback method")
-                        except Exception as e2:
-                            print(f"  ✗ Failed to type line {i+1}: {e2}")
-                            continue
-                else:
-                    print(f"  Skipping empty line {i+1}")
-                
-                # Add newline if not the last line
-                if i < len(lines) - 1:
-                    await editor.press("Enter")
-                
-                # Small delay between lines for stability
-                await self.page_target.wait_for_timeout(100)
-            
-            # Verify the paste was successful
-            await self.page_target.wait_for_timeout(1000)
-            pasted_content = await editor.text_content()
-            
-            if pasted_content and len(pasted_content.strip()) > 0:
-                print(f"✓ Code pasted successfully ({len(lines)} lines)")
-                print(f"✓ Paste verification: {pasted_content[:100]}{'...' if len(pasted_content) > 100 else ''}")
-                return True
-            else:
-                print("⚠ Paste verification failed - no content detected")
-                return False
-            
-        except Exception as e:
-            print(f"⚠ Error pasting code: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-    
     async def get_selected_answers(self, page):
         """Get selected answers from answers account"""
         try:
@@ -1045,345 +721,6 @@ class CodeTantraPlaywrightAutomation:
             print(f"⚠ Error selecting answers: {e}")
             return False
     
-    async def type_code_safely(self, editor, text, delay=10):
-        """Type code safely with basic auto-close handling"""
-        try:
-            # Simple approach: type character by character with error handling
-            for i, char in enumerate(text):
-                try:
-                    await editor.type(char, delay=delay)
-                    
-                    # Handle basic auto-close for empty pairs
-                    if i + 1 < len(text):
-                        next_char = text[i + 1]
-                        if ((char == '{' and next_char == '}') or 
-                            (char == '(' and next_char == ')') or 
-                            (char == '[' and next_char == ']') or
-                            (char == '"' and next_char == '"') or
-                            (char == "'" and next_char == "'")):
-                            # Skip the next character since it will be auto-inserted
-                            continue
-                            
-                except Exception as e:
-                    print(f"    ⚠ Error typing character '{char}' at position {i}: {e}")
-                    # Continue with next character
-                    continue
-                    
-        except Exception as e:
-            print(f"  ⚠ Error in type_code_safely: {e}")
-            raise
-    
-    async def type_code_with_auto_close_handling(self, editor, text, delay=5):
-        """Type code with auto-close handling - skip past auto-closed brackets"""
-        i = 0
-        while i < len(text):
-            char = text[i]
-            
-            # Check if this is an opening bracket followed immediately by closing bracket
-            if i + 1 < len(text):
-                next_char = text[i + 1]
-                
-                # Check for empty pairs that will auto-close
-                if (char == '{' and next_char == '}') or \
-                   (char == '(' and next_char == ')') or \
-                   (char == '[' and next_char == ']'):
-                    # Type the opening bracket
-                    await editor.type(char, delay=delay)
-                    # CodeMirror auto-added the closing bracket, cursor is: {|}
-                    # Press ArrowRight to skip past the auto-closed bracket
-                    await editor.press("ArrowRight")
-                    # Now cursor is: {}|
-                    i += 2  # Skip both opening and closing in our input
-                    continue
-                
-                # For quotes - only handle empty pairs
-                if (char == '"' and next_char == '"') or \
-                   (char == "'" and next_char == "'"):
-                    await editor.type(char, delay=delay)
-                    await editor.press("ArrowRight")
-                    i += 2
-                    continue
-            
-            # Normal character - just type it
-            await editor.type(char, delay=delay)
-            i += 1
-    
-    async def cleanup_extra_brackets(self, editor):
-        """Clean up any remaining auto-closed brackets by pressing Delete for 5 seconds"""
-        try:
-            print("  🧹 Cleaning up extra brackets (5 seconds)...")
-            
-            # Press Delete continuously for 5 seconds to remove all extra brackets
-            start_time = await self.page_target.evaluate("() => Date.now()")
-            delete_duration = 5000  # 5 seconds in milliseconds
-            
-            while True:
-                current_time = await self.page_target.evaluate("() => Date.now()")
-                if current_time - start_time >= delete_duration:
-                    break
-                
-                # Press Delete key
-                await editor.press("Delete")
-                await self.page_target.wait_for_timeout(50)  # Small delay between presses
-            
-            print("  ✓ Cleanup complete (5 seconds of Delete)")
-            
-        except Exception as e:
-            print(f"  ⚠ Cleanup failed: {e}")
-    
-    
-    def extract_uncommented_code_from_answers(self, answers_lines):
-        """Extract only the uncommented code from answers (skip /* */ blocks)"""
-        result_lines = []
-        in_multiline_comment = False
-        
-        for line in answers_lines:
-            text = line['text']
-            stripped = line['stripped']
-            
-            # Check for multiline comment start
-            if '/*' in stripped:
-                in_multiline_comment = True
-                continue
-            
-            # Check for multiline comment end
-            if '*/' in stripped:
-                in_multiline_comment = False
-                continue
-            
-            # Skip lines inside multiline comments
-            if in_multiline_comment:
-                continue
-            
-            # Skip single-line comments (optional)
-            if stripped.startswith('//'):
-                continue
-            
-            # Add non-commented lines
-            if stripped:  # Only add non-empty lines
-                result_lines.append(line)
-        
-        return result_lines
-    
-    async def paste_code_strategy_b(self, answers_lines, static_lines):
-        """Strategy B: Comment static lines, then paste complete code with Ctrl+V"""
-        try:
-            print("📝 Using Strategy B: Comment static lines then paste complete code...")
-            
-            # First, maximize and zoom the target page for better code visibility
-            await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
-            
-            iframe_target = self.page_target.frame_locator("#course-iframe")
-            editor = iframe_target.locator("div.cm-content[contenteditable='true']")
-            
-            # Step 1: Focus the editor and select all content
-            print("  Focusing editor and selecting all content...")
-            await editor.click()
-            await self.page_target.wait_for_timeout(500)
-            
-            # Select all existing content (static lines)
-            await editor.press("Control+a")
-            await self.page_target.wait_for_timeout(500)
-            print("  ✓ Selected all static lines")
-            
-            # Step 2: Comment everything using Ctrl+/
-            print("  Commenting all lines with Ctrl+/...")
-            await editor.press("Control+/")
-            await self.page_target.wait_for_timeout(800)
-            print("  ✓ All lines commented with //")
-            
-            # Step 3: Move to end and add 3 new lines
-            print("  Moving to end and adding 3 new lines...")
-            await editor.press("Control+End")
-            await self.page_target.wait_for_timeout(200)
-            
-            # Press Enter 3 times to create space
-            await editor.press("Enter")
-            await self.page_target.wait_for_timeout(100)
-            await editor.press("Enter")
-            await self.page_target.wait_for_timeout(100)
-            await editor.press("Enter")
-            await self.page_target.wait_for_timeout(100)
-            print("  ✓ Added 3 new lines for code placement")
-            
-            # Step 4: Build complete code from answers and clean it
-            print("  Building complete code from answers...")
-            complete_code = "\n".join(line['text'] for line in answers_lines)
-            
-            if not complete_code.strip():
-                print("  ⚠ No code found in answers")
-                return False
-            
-            # Step 5: Detect language and clean the code using comment remover
-            detected_lang = self.detect_code_language(complete_code)
-            print(f"  Detected language: {detected_lang}")
-            print("  Cleaning code using comment remover...")
-            try:
-                cleaned_code = self.comment_remover.process_text(complete_code, detected_lang)
-                print(f"  ✓ Code cleaned - removed comments")
-            except Exception as e:
-                print(f"  ⚠ Comment removal failed: {e}, using original code")
-                cleaned_code = complete_code
-            
-            print(f"  Ready to type {len(cleaned_code.split(chr(10)))} lines of clean code")
-            
-            # Step 6: Type cleaned code with better error handling
-            print("  Typing cleaned code...")
-            print(f"  Total lines to type: {len(cleaned_code.split(chr(10)))}")
-            lines = cleaned_code.split('\n')
-            
-            for i, line in enumerate(lines):
-                if line.strip():
-                    print(f"  Typing line {i+1}/{len(lines)}: {line[:50]}{'...' if len(line) > 50 else ''}")
-                    try:
-                        # Type with moderate speed for reliability
-                        await self.type_code_safely(editor, line, delay=10)
-                        print(f"  ✓ Line {i+1} typed successfully")
-                    except Exception as e:
-                        print(f"  ⚠ Error typing line {i+1}: {e}")
-                        # Try simple typing as fallback
-                        try:
-                            print(f"  Retrying line {i+1} with simple typing...")
-                            await editor.type(line, delay=20)
-                            print(f"  ✓ Line {i+1} typed with fallback method")
-                        except Exception as e2:
-                            print(f"  ✗ Failed to type line {i+1}: {e2}")
-                            continue
-                else:
-                    print(f"  Skipping empty line {i+1}")
-                
-                if i < len(lines) - 1:
-                    await editor.press("Enter")
-                    await self.page_target.wait_for_timeout(50)  # Slightly slower for reliability
-            print("  ✓ All code typed successfully")
-            
-            # Verify what was actually typed
-            try:
-                actual_content = await editor.text_content()
-                print(f"  Verification: {len(actual_content)} characters typed")
-                if len(actual_content) < len(cleaned_code) * 0.8:  # If less than 80% of expected
-                    print(f"  ⚠ Warning: Only {len(actual_content)} chars typed, expected ~{len(cleaned_code)}")
-                    print(f"  First 100 chars: {actual_content[:100]}")
-                else:
-                    print(f"  ✓ Verification passed: {len(actual_content)} characters")
-            except Exception as e:
-                print(f"  ⚠ Could not verify typed content: {e}")
-            
-            print("✓ Strategy B: Code typed successfully")
-            return True
-            
-        except Exception as e:
-            print(f"✗ Strategy B failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-    
-    async def verify_submission_with_test_case(self):
-        """Verify submission by checking for test case success messages"""
-        try:
-            print("🔍 Verifying submission result...")
-            
-            iframe = self.page_target.frame_locator("#course-iframe")
-            
-            # Wait a bit for results to load
-            await self.page_target.wait_for_timeout(3000)
-            
-            # Check for hidden test case success (1 hidden test case)
-            try:
-                hidden_success = iframe.get_by_text("out of 1 hidden test case(s) passed")
-                await hidden_success.wait_for(state="visible", timeout=5000)
-                print("✓ SUCCESS: 'out of 1 hidden test case(s) passed' found!")
-                return True
-            except:
-                pass
-            
-            # Check for shown test case success (2 shown test cases)
-            try:
-                shown_success = iframe.get_by_text("out of 2 shown test case(s) passed")
-                await shown_success.wait_for(state="visible", timeout=5000)
-                print("✓ SUCCESS: 'out of 2 shown test case(s) passed' found!")
-                return True
-            except:
-                pass
-            
-            # Check for other test case success patterns
-            try:
-                # Look for any pattern like "out of X test case(s) passed"
-                test_success = iframe.get_by_text("test case(s) passed", exact=False)
-                await test_success.wait_for(state="visible", timeout=3000)
-                print("✓ SUCCESS: Test case success message found!")
-                return True
-            except:
-                pass
-            
-            # Fallback: Check for "Test case passed successfully" text
-            try:
-                success_text = iframe.get_by_text("Test case passed successfully")
-                await success_text.wait_for(state="visible", timeout=3000)
-                print("✓ SUCCESS: 'Test case passed successfully' found!")
-                return True
-            except:
-                pass
-            
-            # Alternative: Check for success badge
-            try:
-                badge = iframe.locator("div.badge.badge-secondary.badge-sm.badge-success")
-                await badge.wait_for(timeout=2000)
-                badge_text = await badge.text_content()
-                print(f"✓ SUCCESS: Badge found with text: {badge_text}")
-                return True
-            except:
-                pass
-            
-            print("✗ FAILED: No test case success indicators found")
-            return False
-            
-        except Exception as e:
-            print(f"⚠ Could not verify submission: {e}")
-            return False
-    
-    async def handle_type2_code_completion(self):
-        """Handle Type 2 code completion with smart strategies"""
-        try:
-            print("\n🎯 TYPE 2 CODE COMPLETION DETECTED")
-            print("="*60)
-            
-            # Step 1: Detect type and get static lines
-            type_info = await self.detect_code_completion_type()
-            
-            if type_info['type'] == 'type1':
-                print("⚠ False alarm - This is actually Type 1")
-                # Fall back to Type 1 handling
-                code = await self.get_code_from_answers()
-                if code:
-                    return await self.paste_code_to_target(code)
-                return False
-            
-            static_lines = type_info['static_lines']
-            
-            # Step 2: Extract structured lines from answers
-            answers_lines = await self.extract_all_lines_from_answers()
-            if not answers_lines:
-                print("✗ Failed to extract lines from answers")
-                return False
-            
-            # Step 3: Use Strategy B - Comment static lines then paste complete code
-            print("📝 Using Strategy B: Comment static lines + paste complete code")
-            success = await self.paste_code_strategy_b(answers_lines, static_lines)
-            
-            if success:
-                print("✓ Type 2 code pasted successfully!")
-            else:
-                print("✗ Type 2 code paste failed")
-            
-            return success
-            
-        except Exception as e:
-            print(f"✗ Type 2 handling failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-    
     async def handle_question_answer(self):
         """Main function to handle different question types with Type 2 support"""
         try:
@@ -1392,29 +729,8 @@ class CodeTantraPlaywrightAutomation:
             print(f"Question type detected: {question_type}")
             
             if question_type == "code_completion":
-                print("✓ Code completion question detected")
-                
-                # Detect if Type 1 or Type 2
-                type_info = await self.detect_code_completion_type()
-                
-                if type_info['type'] == 'type2':
-                    # Handle Type 2 with smart strategies
-                    return await self.handle_type2_code_completion()
-                else:
-                    # Handle Type 1 (simple copy-paste)
-                    print("✓ TYPE 1: Simple copy-paste")
-                    code = await self.get_code_from_answers()
-                    if not code:
-                        print("⚠ No code found in answers account")
-                        return False
-                    
-                    paste_success = await self.paste_code_to_target(code)
-                    if paste_success:
-                        print("✓ Code copied and pasted successfully!")
-                        return True
-                    else:
-                        print("⚠ Failed to paste code to target account")
-                        return False
+                # Use the code question handler
+                return await self.code_handler.handle_code_completion_question()
                     
             elif question_type in ["single_choice", "multiple_choice"]:
                 # Handle multiple choice questions
@@ -1435,7 +751,7 @@ class CodeTantraPlaywrightAutomation:
             import traceback
             traceback.print_exc()
             return False
-            
+    
     async def submit_solution(self, question_type=None):
         """Click the submit button with cleanup and retry if needed"""
         try:
@@ -1444,17 +760,11 @@ class CodeTantraPlaywrightAutomation:
             # Switch to iframe first
             iframe = self.page_target.frame_locator("#course-iframe")
             
-            # Try submission up to 3 times with cleanup
-            for attempt in range(3):
-                print(f"  Attempt {attempt + 1}/3...")
+            # Try submission up to 2 times with cleanup
+            for attempt in range(2):
+                print(f"  Attempt {attempt + 1}/2...")
                 
-                # Step 1: Clean up extra brackets ONLY for code-based questions
-                if question_type == "code_completion":
-                    print("  Code completion detected - cleaning up extra brackets...")
-                    editor = iframe.locator("div.cm-content[contenteditable='true']")
-                    await self.cleanup_extra_brackets(editor)
-                else:
-                    print("  Non-code question - skipping bracket cleanup...")
+                # Deletion already done after typing, no need to delete again before submission
                 
                 # Step 2: Wait for submit button to be available
                 print("  Waiting for submit button to be available...")
@@ -1464,7 +774,7 @@ class CodeTantraPlaywrightAutomation:
                     print("  ✓ Submit button found")
                 except Exception as e:
                     print(f"  ⚠ Submit button not found within 30 seconds: {e}")
-                    if attempt < 2:  # Not the last attempt
+                    if attempt < 1:  # Not the last attempt (changed from 2 to 1 for 2 attempts total)
                         print("  Retrying with more cleanup...")
                         continue
                     return False
@@ -1485,7 +795,7 @@ class CodeTantraPlaywrightAutomation:
                     return True
                 else:
                     print("⚠ Submission failed, retrying with more cleanup...")
-                    if attempt < 2:  # Not the last attempt
+                    if attempt < 1:  # Not the last attempt (changed from 2 to 1 for 2 attempts total)
                         # Move to end and clean up more
                         await editor.press("Control+End")
                         await self.page_target.wait_for_timeout(200)
@@ -1509,7 +819,64 @@ class CodeTantraPlaywrightAutomation:
         except Exception as e:
             print(f"⚠ Submission verification error: {e}")
             return False
+    
+    
+    async def verify_submission_with_test_case(self):
+        """Verify submission by checking for test case success messages - prioritizes text-based verification"""
+        try:
+            print("🔍 Verifying submission result...")
             
+            iframe = self.page_target.frame_locator("#course-iframe")
+            
+            # Wait a bit for results to load
+            await self.page_target.wait_for_timeout(3000)
+            
+            # PRIMARY: Check for "Test case passed successfully" text (user's preferred method)
+            try:
+                success_text = iframe.get_by_text("Test case passed successfully")
+                await success_text.wait_for(state="visible", timeout=5000)
+                print("✓ SUCCESS: 'Test case passed successfully' found!")
+                return True
+            except:
+                pass
+            
+            # SECONDARY: Check for hidden test case success (1 hidden test case)
+            try:
+                hidden_success = iframe.get_by_text("out of 1 hidden test case(s) passed")
+                await hidden_success.wait_for(state="visible", timeout=5000)
+                print("✓ SUCCESS: 'out of 1 hidden test case(s) passed' found!")
+                return True
+            except:
+                pass
+            
+            # TERTIARY: Check for shown test case success (2 shown test cases)
+            try:
+                shown_success = iframe.get_by_text("out of 2 shown test case(s) passed")
+                await shown_success.wait_for(state="visible", timeout=5000)
+                print("✓ SUCCESS: 'out of 2 shown test case(s) passed' found!")
+                return True
+            except:
+                pass
+            
+            # QUATERNARY: Check for other test case success patterns
+            try:
+                # Look for any pattern like "out of X test case(s) passed"
+                test_success = iframe.get_by_text("test case(s) passed", exact=False)
+                await test_success.wait_for(state="visible", timeout=3000)
+                print("✓ SUCCESS: Test case success message found!")
+                return True
+            except:
+                pass
+            
+            # Badge method removed as requested by user
+            
+            print("✗ FAILED: No test case success indicators found")
+            return False
+            
+        except Exception as e:
+            print(f"⚠ Could not verify submission: {e}")
+            return False
+    
     async def move_to_next_problem(self):
         """Click Next button on both accounts and verify they match"""
         try:
@@ -1517,21 +884,51 @@ class CodeTantraPlaywrightAutomation:
             
             # Click Next on answers account
             iframe_answers = self.page_answers.frame_locator("#course-iframe")
-            next_answers = iframe_answers.get_by_role("button", name="Next")
+            
+            # Try multiple methods to find Next button
+            try:
+                # Method 1: By role
+                next_answers = iframe_answers.get_by_role("button", name="Next")
+                await next_answers.wait_for(state="visible", timeout=5000)
+            except:
+                try:
+                    # Method 2: By text
+                    next_answers = iframe_answers.get_by_text("Next", exact=True)
+                    await next_answers.wait_for(state="visible", timeout=5000)
+                except:
+                    # Method 3: By CSS selector
+                    next_answers = iframe_answers.locator("button:has-text('Next')")
+                    await next_answers.wait_for(state="visible", timeout=5000)
+            
             await next_answers.scroll_into_view_if_needed()
             await next_answers.click()
             print("  ✓ Clicked Next on answers account")
             
             # Click Next on target account
             iframe_target = self.page_target.frame_locator("#course-iframe")
-            next_target = iframe_target.get_by_role("button", name="Next")
+            
+            # Try multiple methods to find Next button
+            try:
+                # Method 1: By role
+                next_target = iframe_target.get_by_role("button", name="Next")
+                await next_target.wait_for(state="visible", timeout=5000)
+            except:
+                try:
+                    # Method 2: By text
+                    next_target = iframe_target.get_by_text("Next", exact=True)
+                    await next_target.wait_for(state="visible", timeout=5000)
+                except:
+                    # Method 3: By CSS selector
+                    next_target = iframe_target.locator("button:has-text('Next')")
+                    await next_target.wait_for(state="visible", timeout=5000)
+            
             await next_target.scroll_into_view_if_needed()
             await next_target.click()
             print("  ✓ Clicked Next on target account")
             
             # Wait for both pages to load and verify they match
             print("  Waiting for pages to load...")
-            await asyncio.sleep(1)  # Small initial wait
+            await asyncio.sleep(2)  # Increased wait time for page load
             
             # Verify both are on the same problem
             if await self.check_problems_match():
@@ -1544,90 +941,98 @@ class CodeTantraPlaywrightAutomation:
         except Exception as e:
             print(f"⚠ Could not find Next button: {e}")
             return False
-            
+    
     async def process_single_problem(self):
         """Process one problem: verify, answer, submit with error tracking"""
-        print("\n" + "="*60)
-        print("PROCESSING NEW PROBLEM")
-        print("="*60)
+        # Process problem silently (no console output)
         
         # Get current problem number for tracking
         current_problem = await self.get_current_problem_number(self.page_target)
         
         # Verify both are on same problem
         if not await self.check_problems_match():
-            print("⚠ Problems don't match - skipping")
             error_msg = "Problems don't match between accounts"
             self.error_log.append({
                 'problem': current_problem or "Unknown",
                 'error': error_msg
             })
-            print(f"✗ ERROR: {error_msg}")
             return False
         
-        print("✓ Problem verified - processing answer...")
+        # Handle module questions if needed (only when processing a problem)
+        await self.handle_module_question_if_needed()
         
         # Detect question type for appropriate handling
         question_type = await self.detect_question_type(self.page_answers)
-        print(f"  Question type detected: {question_type}")
         
         try:
             # Handle the question (copy/paste or select answers)
             result = await self.handle_question_answer()
             
             if result == "skip":
-                print("✓ Question skipped - moving to next")
                 return "skipped"  # Special return value for skipped questions
                 
             elif result == True:
-                print("✓ Answer processed successfully")
-                
                 # Submit the solution
-                print("  Attempting to submit...")
                 try:
                     submit_success = await self.submit_solution(question_type)
                     
                     if submit_success:
-                        print("✓ Solution submitted")
                         # For code completion: verify with test cases
                         if question_type == "code_completion":
                             if await self.check_submission_success():
-                                print("✓ Submission successful!")
+                                self.track_problem_result(question_type, 'solved')
+                                # Deduct credits for solved problem
+                                if hasattr(self, 'automation_runner'):
+                                    self.automation_runner.deduct_credits_for_problem(question_type, True)
                                 return True
                             else:
-                                print("⚠ Submission verification failed - skipping problem")
                                 self.error_log.append({
                                     'problem': current_problem or "Unknown",
                                     'error': "Submission verification failed - test case not passed"
                                 })
+                                self.track_problem_result(question_type, 'skipped')
+                                # Deduct credits for skipped problem
+                                if hasattr(self, 'automation_runner'):
+                                    self.automation_runner.deduct_credits_for_problem(question_type, False)
                                 return "skipped"
                         else:
                             # For non-code questions: just wait a moment and proceed
-                            print("✓ Non-code question submitted - proceeding to next...")
                             await self.page_target.wait_for_timeout(2000)  # Wait 2 seconds
+                            self.track_problem_result(question_type, 'solved')
+                            # Deduct credits for solved problem
+                            if hasattr(self, 'automation_runner'):
+                                self.automation_runner.deduct_credits_for_problem(question_type, True)
                             return True
                     else:
-                        print("⚠ Submit failed - skipping problem")
                         self.error_log.append({
                             'problem': current_problem or "Unknown",
                             'error': "Submit button not found"
                         })
+                        self.track_problem_result(question_type, 'skipped')
+                        # Deduct credits for skipped problem
+                        if hasattr(self, 'automation_runner'):
+                            self.automation_runner.deduct_credits_for_problem(question_type, False)
                         return "skipped"
                 except Exception as e:
-                    print(f"⚠ Error during submission: {e} - skipping problem")
                     self.error_log.append({
                         'problem': current_problem or "Unknown",
                         'error': f"Submission error: {str(e)}"
                     })
+                    self.track_problem_result(question_type, 'skipped')
+                    # Deduct credits for skipped problem
+                    if hasattr(self, 'automation_runner'):
+                        self.automation_runner.deduct_credits_for_problem(question_type, False)
                     return "skipped"
             else:
-                print("⚠ Failed to process answer - skipping problem")
                 error_msg = "Failed to process answer"
                 self.error_log.append({
                     'problem': current_problem or "Unknown",
                     'error': error_msg
                 })
-                print(f"✗ ERROR: {error_msg}")
+                self.track_problem_result(question_type, 'failed')
+                # Deduct credits for failed problem
+                if hasattr(self, 'automation_runner'):
+                    self.automation_runner.deduct_credits_for_problem(question_type, False)
                 return False
                 
         except Exception as e:
@@ -1636,92 +1041,118 @@ class CodeTantraPlaywrightAutomation:
                 'problem': current_problem or "Unknown",
                 'error': error_msg
             })
-            print(f"✗ ERROR: {error_msg}")
-            import traceback
-            traceback.print_exc()
+            self.track_problem_result(question_type, 'failed')
+            # Deduct credits for failed problem
+            if hasattr(self, 'automation_runner'):
+                self.automation_runner.deduct_credits_for_problem(question_type, False)
             return False
-        
+    
     async def run_automation(self, num_problems=None):
         """Main automation loop"""
-        print("\n" + "="*60)
-        print("STARTING AUTOMATION - FULL MODE")
-        print("(Copy/paste ENABLED - full automation active)")
-        print("="*60)
+        # Keep checking until problems match (no early return)
+        while not await self.check_problems_match():
+            print("Problems don't match - waiting for user to sync...")
+            await asyncio.sleep(3)  # Wait 3 seconds before checking again
         
-        # Initial check if problems match
-        print("\nInitial problem check:")
-        if not await self.check_problems_match():
-            print("\n" + "="*60)
-            print("⚠ WARNING: Accounts are on DIFFERENT problems!")
-            print("="*60)
-            print("Please manually navigate both accounts to the SAME problem.")
-            input("Press ENTER when ready...")
-            
-            # Re-check
-            if not await self.check_problems_match():
-                print("✗ Still different. Exiting.")
-                return
+        print("Problems matched - starting automation")
         
-        print("✓ Both accounts on same problem - starting...")
+        # Both accounts are on same problem - proceed
         
         problems_completed = 0
         problems_failed = 0
         problems_skipped = 0
+        total_problems_processed = 0
         
         try:
             while True:
-                if num_problems and problems_completed >= num_problems:
-                    print(f"\n✓ Completed {num_problems} problems as requested")
-                    break
+                # Check if we have enough credits for the next problem
+                if hasattr(self, 'automation_runner'):
+                    current_credits = self.automation_runner.api_client.get_credits()
+                    if current_credits is not None and current_credits < 1:
+                        print("Insufficient credits to continue - stopping automation")
+                        break
                     
                 # Process current problem
                 result = await self.process_single_problem()
+                total_problems_processed += 1
                 
                 if result == True:
                     problems_completed += 1
-                    print(f"\n✓ Problem {problems_completed} completed successfully!")
+                    print(f"✓ Problem {total_problems_processed} completed successfully")
                 elif result == "skipped":
                     problems_skipped += 1
-                    print(f"\n✓ Problem skipped (Total skipped: {problems_skipped})")
+                    print(f"⏭️ Problem {total_problems_processed} skipped")
                 else:
                     problems_failed += 1
-                    print(f"\n⚠ Problem failed (Total failures: {problems_failed})")
+                    print(f"✗ Problem {total_problems_processed} failed")
+                
+                # Check if we've reached the target number of total problems processed
+                if num_problems and total_problems_processed >= num_problems:
+                    print(f"✓ Processed {num_problems} problems as requested - stopping automation")
+                    break
                     
                 # Move to next
                 if not await self.move_to_next_problem():
-                    print("\n✓ Reached end of problems")
+                    print("✓ Reached end of problems - stopping automation")
                     break
                     
                 # Small pause between problems
                 await asyncio.sleep(2)
                 
         except KeyboardInterrupt:
-            print("\n\n⚠ Automation stopped by user")
+            pass  # Automation stopped by user
             
-        print("\n" + "="*60)
-        print("AUTOMATION COMPLETE - FINAL REPORT")
-        print("="*60)
-        print(f"✓ Problems Solved: {problems_completed}")
-        print(f"⊘ Problems Skipped: {problems_skipped}")
-        print(f"✗ Problems Failed: {problems_failed}")
-        print("="*60)
+        # Get detailed problem summary for UI reporting
+        summary = self.get_problem_summary()
         
-        # Show detailed error log if there were failures
-        if len(self.error_log) > 0:
-            print("\n📋 DETAILED ERROR LOG:")
-            print("="*60)
-            for i, error_entry in enumerate(self.error_log, 1):
-                print(f"{i}. Problem {error_entry['problem']}")
-                print(f"   Error: {error_entry['error']}")
-            print("="*60)
-        else:
-            print("\n🎉 No errors encountered! All problems processed successfully!")
-            print("="*60)
+        # Store summary for UI display (no console output)
+        self.final_summary = summary
         
+        # Store error log for UI display (no console output)
+        self.final_error_log = self.error_log
+    
     async def cleanup(self):
-        """Keep browsers open"""
-        print("\nKeeping browsers open...")
-        print("✓ Browsers will remain open for manual use")
+        """Properly close browsers and contexts to avoid asyncio warnings"""
+        try:
+            print("\nCleaning up browser resources...")
+            
+            # Close pages first
+            if hasattr(self, 'page_answers') and self.page_answers:
+                print("✓ Closing answers page...")
+                await self.page_answers.close()
+                self.page_answers = None
+            
+            if hasattr(self, 'page_target') and self.page_target:
+                print("✓ Closing target page...")
+                await self.page_target.close()
+                self.page_target = None
+            
+            # Close contexts
+            if hasattr(self, 'context_answers') and self.context_answers:
+                print("✓ Closing answers context...")
+                await self.context_answers.close()
+                self.context_answers = None
+            
+            if hasattr(self, 'context_target') and self.context_target:
+                print("✓ Closing target context...")
+                await self.context_target.close()
+                self.context_target = None
+            
+            # Close browsers
+            if hasattr(self, 'browser_answers') and self.browser_answers:
+                print("✓ Closing answers browser...")
+                await self.browser_answers.close()
+                self.browser_answers = None
+            
+            if hasattr(self, 'browser_target') and self.browser_target:
+                print("✓ Closing target browser...")
+                await self.browser_target.close()
+                self.browser_target = None
+            
+            print("✓ All browser resources cleaned up")
+            
+        except Exception as e:
+            print(f"⚠ Error during cleanup: {e}")
 
 
 async def main():

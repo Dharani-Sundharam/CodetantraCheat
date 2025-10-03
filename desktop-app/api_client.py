@@ -7,11 +7,14 @@ import requests
 from typing import Optional, Dict, Any
 
 class APIClient:
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "https://ctautomationpro.onrender.com"):
         """Initialize API client"""
         self.base_url = base_url
         self.token = None
         self.session = requests.Session()
+        # Configure session for better HTTPS handling
+        self.session.verify = True  # Enable SSL verification
+        self.session.timeout = 30   # Set timeout to 30 seconds
     
     def set_token(self, token: str):
         """Set authentication token"""

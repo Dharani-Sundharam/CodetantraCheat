@@ -128,7 +128,7 @@ class ConfigManager:
     def get_default_settings(self) -> Dict[str, Any]:
         """Get default settings"""
         return {
-            'api_url': 'http://localhost:8000',
+            'api_url': 'https://ctautomationpro.onrender.com',
             'check_updates': True,
             'auto_save_logs': True,
             'theme': 'dark'
