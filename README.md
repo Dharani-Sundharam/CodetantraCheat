@@ -2,13 +2,28 @@
 
 A powerful automation tool for CodeTantra platform that helps automate coding assignments and assessments.
 
+## ⚠️ IMPORTANT DISCLAIMER
+
+**This software is provided for EDUCATIONAL PURPOSES ONLY.**
+
+By using this application, you acknowledge and agree that:
+- This tool is intended solely for educational and learning purposes
+- You are using this software at your own risk
+- The developers are NOT responsible for any consequences of using this software
+- You are responsible for complying with all applicable terms of service
+- Any misuse of this software is strictly prohibited
+- Academic integrity policies must be followed at all times
+
+**The developers disclaim all liability for any damages, losses, or consequences resulting from the use of this software.**
+
 ## 🚀 Quick Start
 
 ### For Users:
 1. **Download** `install.bat` and `run.bat` files
 2. **Run** `install.bat` to clone repository and install dependencies
-3. **Configure** your credentials in `CodeTantraAutomation/credentials.py`
+3. **Configure** your credentials in `CodeTantraAutomation/desktop-app/credentials.py` (copy from `credentials_template.py`)
 4. **Run** `run.bat` to start the application
+5. **Accept** the disclaimer dialog to continue
 
 ### For Developers:
 1. **Clone** the repository: `git clone -b desktop-app <repository-url>`
@@ -56,9 +71,10 @@ python desktop-app/main.py
 ```
 
 ### Configuration
-1. **Edit** `CodeTantraAutomation/credentials.py` with your CodeTantra credentials
-2. **Configure** `CodeTantraAutomation/config.py` for API settings
-3. **Run** the application
+1. **Copy** `CodeTantraAutomation/desktop-app/credentials_template.py` to `credentials.py`
+2. **Edit** `CodeTantraAutomation/desktop-app/credentials.py` with your CodeTantra credentials
+3. **Configure** `CodeTantraAutomation/desktop-app/config.py` for API settings
+4. **Run** the application
 
 ## 🔒 Application Features
 
@@ -175,25 +191,34 @@ The application includes a credit system that:
 
 ## 📝 Configuration
 
-### Credentials (`CodeTantraAutomation/credentials.py`)
+### Credentials Setup
+1. **Copy the template**: `cp desktop-app/credentials_template.py desktop-app/credentials.py`
+2. **Edit credentials**: Fill in your CodeTantra account details
+
 ```python
+# desktop-app/credentials.py
 LOGIN_URL = "https://your-codetantra-url.com"
 ANSWERS_ACCOUNT = {
-    "username": "your_username",
-    "password": "your_password"
+    "username": "your_answers_username",
+    "password": "your_answers_password"
 }
 TARGET_ACCOUNT = {
-    "username": "your_username", 
-    "password": "your_password"
+    "username": "your_target_username", 
+    "password": "your_target_password"
 }
 ```
 
-### API Configuration (`CodeTantraAutomation/config.py`)
+### API Configuration (`desktop-app/config.py`)
 ```python
 API_BASE_URL = "https://your-api-url.com"
 API_KEY = "your_api_key"
 CREDIT_SYSTEM_ENABLED = True
 ```
+
+### First Run
+- **Disclaimer**: You must accept the educational use disclaimer to continue
+- **No Auto-Login**: Credentials are cleared by default for security
+- **Manual Setup**: Users must configure their own credentials
 
 ## 🚨 Important Notes
 
