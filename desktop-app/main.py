@@ -83,19 +83,20 @@ class CodeTantraApp:
             return False
     
     def show_api_warning_dialog(self):
-        """Show warning dialog when API is not available"""
+        """Show warning dialog when API is not available - BLOCKS usage in offline mode"""
         print("[DEBUG] Showing API warning dialog...")
         
         # Create a custom warning dialog
         warning_window = tk.Toplevel(self.root)
-        warning_window.title("API Connection Warning")
-        warning_window.geometry("500x400")
+        warning_window.title("API Connection Required")
+        warning_window.geometry("500x500")
         warning_window.resizable(False, False)
         warning_window.configure(bg=self.bg_color)
         
-        # Center the window
+        # Center the window and make it modal
         warning_window.transient(self.root)
         warning_window.grab_set()
+        warning_window.protocol("WM_DELETE_WINDOW", lambda: None)  # Prevent closing
         
         # Make it appear on top and focus
         warning_window.lift()
@@ -116,27 +117,27 @@ class CodeTantraApp:
         # Warning icon (using text symbol)
         warning_icon = tk.Label(
             title_frame,
-            text="!",
+            text="🚫",
             font=("Arial", 48, "bold"),
             bg=self.bg_color,
-            fg="#ff6b6b"
+            fg="#ef4444"
         )
         warning_icon.pack(side="left", padx=(0, 15))
         
         # Title text
         title_text = tk.Label(
             title_frame,
-            text="API Server Unavailable",
+            text="API Server Required",
             font=("Arial", 18, "bold"),
             bg=self.bg_color,
-            fg="#ff6b6b"
+            fg="#ef4444"
         )
         title_text.pack(side="left")
         
         # Warning message
         warning_text = tk.Text(
             main_frame,
-            height=12,
+            height=16,
             width=50,
             wrap="word",
             font=("Arial", 11),
@@ -150,25 +151,30 @@ class CodeTantraApp:
         warning_text.pack(fill="both", expand=True, pady=(0, 20))
         
         # Insert warning message
-        warning_message = """The API server is currently unavailable. This could be due to:
+        warning_message = """OFFLINE MODE NOT ALLOWED
 
-• Server is starting up (takes 30-60 seconds)
-• Server is sleeping (inactive for 15+ minutes)  
+The API server is currently unavailable. This application requires an active API connection to function properly.
+
+WHY API IS REQUIRED:
+• Credit system management
+• User authentication and validation
+• Problem tracking and statistics
+• Security and rate limiting
+• Real-time status updates
+
+POSSIBLE CAUSES:
+• Server is starting up (30-60 seconds)
+• Server is sleeping (inactive 15+ minutes)
 • Network connectivity issues
 • Server maintenance
 
-WHAT THIS MEANS:
-• You can still use the app for testing
-• Credits won't be deducted automatically
-• Some features may be limited
+WHAT TO DO:
+1. Check your internet connection
+2. Wait 1-2 minutes for server startup
+3. Click "Retry Connection" to test again
+4. Contact support if problem persists
 
-WHAT YOU CAN DO:
-1. Wait 1-2 minutes and restart the app
-2. Check your internet connection
-3. Visit the website to wake up the server
-4. Continue anyway (limited functionality)
-
-The app will continue to work, but with reduced functionality."""
+You cannot use the automation features without API connectivity."""
         
         warning_text.insert("1.0", warning_message)
         warning_text.config(state="disabled")
@@ -177,26 +183,12 @@ The app will continue to work, but with reduced functionality."""
         button_frame = tk.Frame(main_frame, bg=self.bg_color)
         button_frame.pack(fill="x", pady=(10, 0))
         
-        # Continue anyway button
-        continue_button = tk.Button(
-            button_frame,
-            text="Continue Anyway",
-            font=("Arial", 12, "bold"),
-            bg="#4CAF50",
-            fg="white",
-            relief="flat",
-            padx=20,
-            pady=10,
-            command=lambda: self.close_api_warning(warning_window, continue_anyway=True)
-        )
-        continue_button.pack(side="right", padx=(10, 0))
-        
         # Retry button
         retry_button = tk.Button(
             button_frame,
             text="Retry Connection",
             font=("Arial", 12, "bold"),
-            bg=self.accent_color,
+            bg="#3b82f6",
             fg="white",
             relief="flat",
             padx=20,
@@ -208,16 +200,16 @@ The app will continue to work, but with reduced functionality."""
         # Exit button
         exit_button = tk.Button(
             button_frame,
-            text="Exit App",
+            text="Exit Application",
             font=("Arial", 12),
-            bg="#f44336",
+            bg="#6b7280",
             fg="white",
             relief="flat",
             padx=20,
             pady=10,
-            command=lambda: self.close_api_warning(warning_window, continue_anyway=False)
+            command=self.root.quit
         )
-        exit_button.pack(side="left")
+        exit_button.pack(side="right")
         
         # Center the window on screen
         warning_window.update_idletasks()
@@ -232,18 +224,19 @@ The app will continue to work, but with reduced functionality."""
         warning_window.deiconify()
     
     def show_fallback_warning(self):
-        """Show a simple messagebox warning as fallback"""
+        """Show a simple messagebox warning as fallback - BLOCKS usage"""
         try:
             print("[DEBUG] Showing fallback warning messagebox...")
-            messagebox.showwarning(
-                "API Server Unavailable",
+            messagebox.showerror(
+                "API Server Required",
+                "OFFLINE MODE NOT ALLOWED\n\n"
                 "The API server is not responding.\n\n"
-                "This could be due to:\n"
+                "This application requires an active API connection to function.\n\n"
+                "Possible causes:\n"
                 "• Server is starting up (30-60 seconds)\n"
                 "• Server is sleeping (inactive 15+ minutes)\n"
                 "• Network connectivity issues\n\n"
-                "You can continue using the app with limited functionality.\n"
-                "Try refreshing the API status or restart the app in a few minutes."
+                "Please check your connection and restart the application."
             )
         except Exception as e:
             print(f"[ERROR] Failed to show fallback warning: {e}")
@@ -259,8 +252,16 @@ The app will continue to work, but with reduced functionality."""
         
         # Test connection
         if self.api_client.ping():
-            # Success - show success message briefly then close
+            # Success - update API status and close dialog
+            self.api_available = True
+            self.api_status_label.config(text="[ONLINE] API Available", fg="#10b981")
+            self.log_message("[SUCCESS] API connection restored!")
+            
+            # Show success message briefly then close
             self.show_api_success_message(warning_window)
+            
+            # Close dialog after 2 seconds
+            warning_window.after(2000, lambda: self.close_api_warning(warning_window, continue_anyway=True))
         else:
             # Still failed - re-enable buttons
             for widget in warning_window.winfo_children():
@@ -278,26 +279,29 @@ The app will continue to work, but with reduced functionality."""
             if isinstance(widget, tk.Text):
                 widget.config(state="normal")
                 widget.delete("1.0", "end")
-                widget.insert("1.0", "[SUCCESS] API Connection Restored!\n\nYou can now use all features normally.")
+                widget.insert("1.0", "✅ API CONNECTION RESTORED!\n\nYou can now use all features normally.\n\nThis dialog will close automatically...")
                 widget.config(state="disabled")
                 break
         
-        # Update buttons
+        # Update buttons to show success
         for widget in warning_window.winfo_children():
             if isinstance(widget, tk.Frame):
                 for child in widget.winfo_children():
                     if isinstance(child, tk.Button):
-                        if "Continue" in child.cget("text"):
-                            child.config(text="Continue", state="normal")
-                        elif "Retry" in child.cget("text"):
-                            child.config(text="Close", command=lambda: self.close_api_warning(warning_window, continue_anyway=True))
+                        if "Retry" in child.cget("text"):
+                            child.config(text="✅ Connected", state="disabled", bg="#10b981")
                         elif "Exit" in child.cget("text"):
                             child.pack_forget()
     
     def close_api_warning(self, warning_window, continue_anyway=False):
         """Close the API warning dialog"""
         warning_window.destroy()
-        if not continue_anyway:
+        if continue_anyway:
+            # API is restored, enable automation buttons
+            self.start_btn.config(state=tk.NORMAL)
+            self.endless_btn.config(state=tk.NORMAL)
+            self.log_message("[INFO] All features are now available!")
+        else:
             self.root.quit()
     
     def refresh_api_status(self):
@@ -312,10 +316,16 @@ The app will continue to work, but with reduced functionality."""
                 self.api_available = True
                 self.api_status_label.config(text="[ONLINE] API Available", fg="#10b981")
                 self.log_message("[SUCCESS] API connection restored!")
+                # Enable automation buttons
+                self.start_btn.config(state=tk.NORMAL)
+                self.endless_btn.config(state=tk.NORMAL)
             else:
                 self.api_available = False
                 self.api_status_label.config(text="[OFFLINE] API Unavailable", fg="#ef4444")
                 self.log_message("[ERROR] API connection failed")
+                # Disable automation buttons
+                self.start_btn.config(state=tk.DISABLED)
+                self.endless_btn.config(state=tk.DISABLED)
             
             # Re-enable button
             self.refresh_api_btn.config(text="Refresh API Status", state="normal")
@@ -324,6 +334,9 @@ The app will continue to work, but with reduced functionality."""
             self.api_available = False
             self.api_status_label.config(text="[ERROR] API Error", fg="#ef4444")
             self.refresh_api_btn.config(text="Refresh API Status", state="normal")
+            # Disable automation buttons on error
+            self.start_btn.config(state=tk.DISABLED)
+            self.endless_btn.config(state=tk.DISABLED)
             self.log_message(f"[ERROR] API test error: {e}")
     
     def clear_window(self):
@@ -662,7 +675,8 @@ The app will continue to work, but with reduced functionality."""
             fg="white",
             relief=tk.FLAT,
             cursor="hand2",
-            command=self.start_automation
+            command=self.start_automation,
+            state=tk.NORMAL if self.api_available else tk.DISABLED
         )
         self.start_btn.pack(fill=tk.X, padx=15, pady=(0, 10), ipady=10)
         
@@ -675,7 +689,8 @@ The app will continue to work, but with reduced functionality."""
             fg="white",
             relief=tk.FLAT,
             cursor="hand2",
-            command=self.start_endless_mode
+            command=self.start_endless_mode,
+            state=tk.NORMAL if self.api_available else tk.DISABLED
         )
         self.endless_btn.pack(fill=tk.X, padx=15, pady=(0, 10), ipady=10)
         
@@ -874,18 +889,15 @@ The app will continue to work, but with reduced functionality."""
         
         # Check API availability
         if not self.api_available:
-            result = messagebox.askyesno(
-                "API Unavailable", 
-                "The API server is currently unavailable. This means:\n\n"
-                "• Credits won't be deducted automatically\n"
-                "• Some features may be limited\n"
-                "• You can still test the automation\n\n"
-                "Do you want to continue anyway?"
+            messagebox.showerror(
+                "API Required", 
+                "API server is unavailable!\n\n"
+                "This application requires an active API connection to function.\n\n"
+                "Please check your connection and try again."
             )
-            if not result:
-                return
+            return
         
-        # Validate inputs
+        # Validate inputs first
         if not all([
             self.url_entry.get(),
             self.answers_email.get(),
@@ -911,6 +923,7 @@ The app will continue to work, but with reduced functionality."""
         # Update UI
         self.is_running = True
         self.start_btn.config(text="Running...", state=tk.DISABLED, bg="#999999")
+        self.endless_btn.config(text="Endless Mode", state=tk.DISABLED, bg="#999999")
         self.status_display.config(text="Running", fg="#f59e0b")
         self.log_text.delete(1.0, tk.END)
         self.log_message("Starting automation...")
@@ -928,16 +941,13 @@ The app will continue to work, but with reduced functionality."""
         
         # Check API availability
         if not self.api_available:
-            result = messagebox.askyesno(
-                "API Unavailable", 
-                "The API server is currently unavailable. This means:\n\n"
-                "• Credits won't be deducted automatically\n"
-                "• Some features may be limited\n"
-                "• You can still test the automation\n\n"
-                "Do you want to continue anyway?"
+            messagebox.showerror(
+                "API Required", 
+                "API server is unavailable!\n\n"
+                "This application requires an active API connection to function.\n\n"
+                "Please check your connection and try again."
             )
-            if not result:
-                return
+            return
         
         # Validate inputs
         if not all([
@@ -1022,7 +1032,7 @@ The app will continue to work, but with reduced functionality."""
             self.root.after(0, self.automation_error, str(e))
     
     def show_results(self, result):
-        """Show automation results"""
+        """Show automation results with detailed breakdown"""
         self.is_running = False
         self.start_btn.config(text="Start Automation", state=tk.NORMAL, bg=self.button_bg)
         self.endless_btn.config(text="Endless Mode", state=tk.NORMAL, bg="#10b981")
@@ -1033,16 +1043,176 @@ The app will continue to work, but with reduced functionality."""
         self.log_message(f"Problems failed: {result['failed']}")
         self.log_message(f"Problems skipped: {result['skipped']}")
         
+        # Show detailed breakdown if available
+        if 'problem_details' in result:
+            self.log_message("\n📊 DETAILED BREAKDOWN BY QUESTION TYPE:")
+            for question_type, counts in result['problem_details'].items():
+                if sum(counts.values()) > 0:
+                    type_name = question_type.replace('_', ' ').title()
+                    self.log_message(f"  {type_name}:")
+                    self.log_message(f"    ✓ Solved: {counts['solved']}")
+                    self.log_message(f"    ⊘ Skipped: {counts['skipped']}")
+                    self.log_message(f"    ✗ Failed: {counts['failed']}")
+        
+        # Show credits information if available
+        if 'credits' in result:
+            credit_info = result['credits']
+            self.log_message(f"\n💰 CREDITS CALCULATION:")
+            self.log_message(f"  Total credits to deduct: {credit_info['total_credits']}")
+            for question_type, breakdown in credit_info['breakdown'].items():
+                if breakdown['total_credits'] > 0:
+                    type_name = question_type.replace('_', ' ').title()
+                    self.log_message(f"  {type_name}: {breakdown['total_credits']} credits")
+        
         # Update credits
         self.refresh_credits()
         
-        messagebox.showinfo(
-            "Automation Complete",
-            f"Solved: {result['solved']}\nFailed: {result['failed']}\nSkipped: {result['skipped']}"
+        # Create detailed message for dialog
+        message = f"Solved: {result['solved']}\nFailed: {result['failed']}\nSkipped: {result['skipped']}"
+        if 'credits' in result:
+            message += f"\n\nCredits to deduct: {result['credits']['total_credits']}"
+        
+        # Show detailed results dialog
+        self.show_detailed_results_dialog(result)
+    
+    def show_detailed_results_dialog(self, result):
+        """Show detailed results in a custom dialog"""
+        # Create detailed results window
+        results_window = tk.Toplevel(self.root)
+        results_window.title("Automation Results - Detailed Report")
+        results_window.geometry("600x500")
+        results_window.resizable(True, True)
+        results_window.configure(bg=self.bg_color)
+        
+        # Make it modal
+        results_window.transient(self.root)
+        results_window.grab_set()
+        
+        # Center the window
+        results_window.update_idletasks()
+        x = (results_window.winfo_screenwidth() // 2) - (results_window.winfo_width() // 2)
+        y = (results_window.winfo_screenheight() // 2) - (results_window.winfo_height() // 2)
+        results_window.geometry(f"+{x}+{y}")
+        
+        # Main frame
+        main_frame = tk.Frame(results_window, bg=self.bg_color, padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        title_label = tk.Label(
+            main_frame,
+            text="Automation Complete!",
+            font=("Arial", 18, "bold"),
+            bg=self.bg_color,
+            fg="#10b981"
         )
+        title_label.pack(pady=(0, 20))
+        
+        # Summary frame
+        summary_frame = tk.LabelFrame(
+            main_frame,
+            text="Summary",
+            font=("Arial", 12, "bold"),
+            bg=self.bg_color,
+            fg=self.fg_color,
+            relief=tk.RAISED,
+            bd=1
+        )
+        summary_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Summary content
+        summary_content = tk.Frame(summary_frame, bg=self.bg_color)
+        summary_content.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Summary stats
+        stats_frame = tk.Frame(summary_content, bg=self.bg_color)
+        stats_frame.pack(fill=tk.X)
+        
+        tk.Label(stats_frame, text=f"Solved: {result['solved']}", font=("Arial", 11), bg=self.bg_color, fg="#10b981").pack(side=tk.LEFT, padx=(0, 20))
+        tk.Label(stats_frame, text=f"Failed: {result['failed']}", font=("Arial", 11), bg=self.bg_color, fg="#ef4444").pack(side=tk.LEFT, padx=(0, 20))
+        tk.Label(stats_frame, text=f"Skipped: {result['skipped']}", font=("Arial", 11), bg=self.bg_color, fg="#f59e0b").pack(side=tk.LEFT)
+        
+        # Credits info
+        if 'credits' in result:
+            credits_frame = tk.Frame(summary_content, bg=self.bg_color)
+            credits_frame.pack(fill=tk.X, pady=(10, 0))
+            tk.Label(credits_frame, text=f"Credits Deducted: {result['credits']['total_credits']}", font=("Arial", 11, "bold"), bg=self.bg_color, fg="#3b82f6").pack()
+        
+        # Detailed breakdown
+        if 'problem_details' in result:
+            details_frame = tk.LabelFrame(
+                main_frame,
+                text="Breakdown by Question Type",
+                font=("Arial", 12, "bold"),
+                bg=self.bg_color,
+                fg=self.fg_color,
+                relief=tk.RAISED,
+                bd=1
+            )
+            details_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+            
+            # Create scrollable text widget
+            text_frame = tk.Frame(details_frame, bg=self.bg_color)
+            text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            details_text = tk.Text(
+                text_frame,
+                height=12,
+                wrap=tk.WORD,
+                font=("Consolas", 10),
+                bg=self.entry_bg,
+                fg=self.fg_color,
+                relief=tk.FLAT,
+                bd=0,
+                padx=10,
+                pady=10
+            )
+            details_text.pack(fill=tk.BOTH, expand=True)
+            
+            # Add scrollbar
+            scrollbar = tk.Scrollbar(text_frame, orient=tk.VERTICAL, command=details_text.yview)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            details_text.config(yscrollcommand=scrollbar.set)
+            
+            # Populate details
+            details_content = ""
+            for question_type, counts in result['problem_details'].items():
+                if sum(counts.values()) > 0:
+                    type_name = question_type.replace('_', ' ').title()
+                    details_content += f"{type_name}:\n"
+                    details_content += f"  Solved: {counts['solved']}\n"
+                    details_content += f"  Failed: {counts['failed']}\n"
+                    details_content += f"  Skipped: {counts['skipped']}\n\n"
+            
+            if 'credits' in result:
+                details_content += "\nCredits Breakdown:\n"
+                for question_type, breakdown in result['credits']['breakdown'].items():
+                    if breakdown['total_credits'] > 0:
+                        type_name = question_type.replace('_', ' ').title()
+                        details_content += f"{type_name}: {breakdown['total_credits']} credits\n"
+            
+            details_text.insert(tk.END, details_content)
+            details_text.config(state=tk.DISABLED)
+        
+        # Close button
+        close_btn = tk.Button(
+            main_frame,
+            text="Close",
+            font=("Arial", 12, "bold"),
+            bg="#6b7280",
+            fg="white",
+            relief=tk.FLAT,
+            padx=30,
+            pady=10,
+            cursor="hand2",
+            command=results_window.destroy
+        )
+        close_btn.pack(pady=(10, 0))
+    
+    
     
     def show_endless_results(self, result):
-        """Show endless mode results"""
+        """Show endless mode results with detailed breakdown"""
         self.is_running = False
         self.start_btn.config(text="Start Automation", state=tk.NORMAL, bg=self.button_bg)
         self.endless_btn.config(text="Endless Mode", state=tk.NORMAL, bg="#10b981")
@@ -1054,17 +1224,41 @@ The app will continue to work, but with reduced functionality."""
         self.log_message(f"Total problems skipped: {result['skipped']}")
         self.log_message(f"Total time: {result.get('duration', 'Unknown')}")
         
+        # Show detailed breakdown if available
+        if 'problem_details' in result:
+            self.log_message("\n📊 DETAILED BREAKDOWN BY QUESTION TYPE:")
+            for question_type, counts in result['problem_details'].items():
+                if sum(counts.values()) > 0:
+                    type_name = question_type.replace('_', ' ').title()
+                    self.log_message(f"  {type_name}:")
+                    self.log_message(f"    ✓ Solved: {counts['solved']}")
+                    self.log_message(f"    ⊘ Skipped: {counts['skipped']}")
+                    self.log_message(f"    ✗ Failed: {counts['failed']}")
+        
+        # Show credits information if available
+        if 'credits' in result:
+            credit_info = result['credits']
+            self.log_message(f"\n💰 CREDITS CALCULATION:")
+            self.log_message(f"  Total credits to deduct: {credit_info['total_credits']}")
+            for question_type, breakdown in credit_info['breakdown'].items():
+                if breakdown['total_credits'] > 0:
+                    type_name = question_type.replace('_', ' ').title()
+                    self.log_message(f"  {type_name}: {breakdown['total_credits']} credits")
+        
         # Update credits
         self.refresh_credits()
         
-        messagebox.showinfo(
-            "Endless Mode Complete",
-            f"Endless mode finished!\n\n"
-            f"Solved: {result['solved']}\n"
-            f"Failed: {result['failed']}\n"
-            f"Skipped: {result['skipped']}\n"
-            f"Duration: {result.get('duration', 'Unknown')}"
-        )
+        # Create detailed message for dialog
+        message = f"Endless mode finished!\n\n"
+        message += f"Solved: {result['solved']}\n"
+        message += f"Failed: {result['failed']}\n"
+        message += f"Skipped: {result['skipped']}\n"
+        message += f"Duration: {result.get('duration', 'Unknown')}"
+        if 'credits' in result:
+            message += f"\n\nCredits to deduct: {result['credits']['total_credits']}"
+        
+        # Show detailed results dialog
+        self.show_detailed_results_dialog(result)
     
     def automation_error(self, error):
         """Handle automation error"""

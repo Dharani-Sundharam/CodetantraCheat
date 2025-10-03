@@ -32,8 +32,63 @@ class AutomationRunner:
         self.problems_failed = 0
         self.problems_skipped = 0
         
+        # Detailed problem tracking
+        self.problem_details = {
+            'code_completion': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'multiple_choice': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'fill_blank': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'other': {'solved': 0, 'failed': 0, 'skipped': 0}
+        }
+        
         self.start_time = None
         self.end_time = None
+    
+    def track_problem(self, problem_type: str, result: str):
+        """Track a problem by type and result"""
+        if problem_type not in self.problem_details:
+            problem_type = 'other'
+        
+        if result == 'solved':
+            self.problems_solved += 1
+            self.problem_details[problem_type]['solved'] += 1
+        elif result == 'failed':
+            self.problems_failed += 1
+            self.problem_details[problem_type]['failed'] += 1
+        elif result == 'skipped':
+            self.problems_skipped += 1
+            self.problem_details[problem_type]['skipped'] += 1
+    
+    def calculate_credits(self) -> Dict[str, Any]:
+        """Calculate credits based on problem types and results"""
+        total_credits = 0
+        credit_breakdown = {}
+        
+        for problem_type, counts in self.problem_details.items():
+            # Credits: code_completion=5, others=3, unsolved=1
+            if problem_type == 'code_completion':
+                solved_credits = counts['solved'] * 5
+                failed_credits = counts['failed'] * 1
+                skipped_credits = counts['skipped'] * 1
+            else:
+                solved_credits = counts['solved'] * 3
+                failed_credits = counts['failed'] * 1
+                skipped_credits = counts['skipped'] * 1
+            
+            type_total = solved_credits + failed_credits + skipped_credits
+            total_credits += type_total
+            
+            credit_breakdown[problem_type] = {
+                'solved_credits': solved_credits,
+                'failed_credits': failed_credits,
+                'skipped_credits': skipped_credits,
+                'total_credits': type_total,
+                'counts': counts
+            }
+        
+        return {
+            'total_credits': total_credits,
+            'breakdown': credit_breakdown
+        }
     
     def run(self) -> Dict[str, Any]:
         """
@@ -81,6 +136,9 @@ class AutomationRunner:
                 # Create automation instance
                 automation = CodeTantraPlaywrightAutomation(auto_login=False)
                 
+                # Set automation runner reference for credit deduction
+                automation.automation_runner = self
+                
                 # Run automation with asyncio
                 async def run_automation():
                     from playwright.async_api import async_playwright
@@ -110,27 +168,45 @@ class AutomationRunner:
                                 "Target Account"
                             )
                             
+                            # Question matching is now handled inside the automation itself
+                            
                             # Run automation normally
                             num_problems = int(self.config.get('num_problems', 10))
-                            await automation.run_automation(num_problems=num_problems)
+                            result = await automation.run_automation(num_problems=num_problems)
                             
-                            # Update counters from automation
-                            self.problems_solved = automation.problems_solved
-                            self.problems_failed = automation.problems_failed
-                            self.problems_skipped = automation.problems_skipped
+                            # Check if automation returned an error
+                            if isinstance(result, dict) and result.get('error') == 'accounts_not_synced':
+                                return self.get_error_result("questions_not_synced")
                             
-                            # Get problem type tracking
-                            self.code_problems_solved = automation.code_problems_solved
-                            self.mcq_problems_solved = automation.mcq_problems_solved
-                            self.code_problems_failed = automation.code_problems_failed
-                            self.mcq_problems_failed = automation.mcq_problems_failed
+                            # Cleanup browsers only when automation completes successfully
+                            await automation.cleanup()
+                            
+                            # Get detailed problem summary from automation
+                            if hasattr(automation, 'get_problem_summary'):
+                                problem_summary = automation.get_problem_summary()
+                                # Update our tracking with the detailed results
+                                for question_type, counts in problem_summary['by_type'].items():
+                                    if question_type in self.problem_details:
+                                        self.problem_details[question_type] = counts
+                                
+                                # Update total counters
+                                self.problems_solved = problem_summary['total']['solved']
+                                self.problems_failed = problem_summary['total']['failed']
+                                self.problems_skipped = problem_summary['total']['skipped']
+                            else:
+                                # Fallback to basic tracking
+                                self.problems_solved = getattr(automation, 'problems_solved', 0)
+                                self.problems_failed = getattr(automation, 'problems_failed', 0)
+                                self.problems_skipped = getattr(automation, 'problems_skipped', 0)
+                            # Using detailed problem tracking instead of individual attributes
                             
                             # Calculate and deduct credits after completion
-                            self.deduct_credits_after_completion()
+                            # Credits are now deducted per problem, not at the end
                             
                         finally:
-                            # Ensure cleanup happens even if automation fails
-                            await automation.cleanup()
+                            # Only cleanup if automation actually completed or failed due to credits
+                            # Don't cleanup if problems don't match - keep browsers open
+                            pass
                 
                 # Execute the automation
                 asyncio.run(run_automation())
@@ -243,151 +319,58 @@ TARGET_ACCOUNT = {{
             self.log(f"Error deducting credits: {e}")
             return False
     
-    def deduct_credits_after_completion(self):
-        """Calculate and deduct credits after automation completes"""
+    def deduct_credits_for_problem(self, question_type: str, success: bool) -> bool:
+        """Deduct credits for a single problem immediately after solving"""
         try:
-            self.log("\n" + "="*50)
-            self.log("CALCULATING CREDITS...")
-            self.log("="*50)
-            
-            # Calculate credits based on problem types:
-            # - Code problems solved: 5 credits each
-            # - MCQ problems solved: 3 credits each  
-            # - Failed problems: 1 credit each (regardless of type)
-            # - Skipped problems: 1 credit each
-            
-            credits_for_code_solved = self.code_problems_solved * 5
-            credits_for_mcq_solved = self.mcq_problems_solved * 3
-            credits_for_failed = self.problems_failed * 1
-            credits_for_skipped = self.problems_skipped * 1
-            
-            total_credits = credits_for_code_solved + credits_for_mcq_solved + credits_for_failed + credits_for_skipped
-            
-            self.log(f"Code problems solved: {self.code_problems_solved} x 5 credits = {credits_for_code_solved} credits")
-            self.log(f"MCQ problems solved: {self.mcq_problems_solved} x 3 credits = {credits_for_mcq_solved} credits")
-            self.log(f"Problems failed: {self.problems_failed} x 1 credit = {credits_for_failed} credits")
-            self.log(f"Problems skipped: {self.problems_skipped} x 1 credit = {credits_for_skipped} credits")
-            self.log(f"Total credits to deduct: {total_credits}")
-            
             # Check API connectivity
             if not self.check_api_connectivity():
-                self.log("WARNING: Cannot connect to API - credits not deducted")
-                self.log("Please ensure the website is accessible and try again later")
-                return
+                return False
             
-            # Get current credits before deduction
+            # Get current credits
             current_credits = self.api_client.get_credits()
             if current_credits is None:
-                self.log("WARNING: Cannot retrieve current credits")
-                return
+                return False
             
-            self.log(f"Current credits before deduction: {current_credits}")
+            # Calculate credit amount based on question type and success
+            if success:
+                # Solved problems: code=5, non-code=3
+                if question_type == "code_completion":
+                    credit_amount = 5
+                else:
+                    credit_amount = 3
+            else:
+                # Failed/skipped problems: 1 credit each
+                credit_amount = 1
             
-            # Track successful deductions
-            credits_deducted = 0
+            # Check if we have enough credits
+            if current_credits < credit_amount:
+                self.log(f"Insufficient credits: need {credit_amount}, have {current_credits}")
+                return False
             
-            # Deduct credits for code problems solved (5 credits each)
-            for i in range(self.code_problems_solved):
-                remaining_credits = self.api_client.get_credits()
-                if remaining_credits is not None and remaining_credits < 5:
-                    self.log(f"\nWARNING: Insufficient credits for code problem {i+1}")
-                    self.log(f"Stopping credit deduction. Code problems processed: {i}")
-                    break
+            # Deduct credits
+            result = self.api_client.deduct_credits(
+                problem_type=question_type,
+                success=success,
+                problem_number=None
+            )
+            
+            if result.get('success'):
+                self.log(f"Credits deducted: {credit_amount} for {question_type} ({'solved' if success else 'failed/skipped'})")
+                return True
+            else:
+                self.log(f"Credit deduction failed: {result.get('error', 'Unknown error')}")
+                return False
                 
-                try:
-                    result = self.api_client.deduct_credits(
-                        problem_type='code_completion',
-                        success=True,
-                        problem_number=None
-                    )
-                    if result.get('success'):
-                        credits_deducted += 5
-                    else:
-                        self.log(f"Warning: Credit deduction for code problem {i+1} failed")
-                        if result.get('error') == 'Insufficient credits':
-                            self.log("Insufficient credits - stopping deduction")
-                            break
-                except Exception as e:
-                    self.log(f"Error deducting credit for code problem {i+1}: {e}")
-            
-            # Deduct credits for MCQ problems solved (3 credits each)
-            for i in range(self.mcq_problems_solved):
-                remaining_credits = self.api_client.get_credits()
-                if remaining_credits is not None and remaining_credits < 3:
-                    self.log(f"\nWARNING: Insufficient credits for MCQ problem {i+1}")
-                    self.log(f"Stopping credit deduction. MCQ problems processed: {i}")
-                    break
-                
-                try:
-                    result = self.api_client.deduct_credits(
-                        problem_type='multiple_choice',
-                        success=True,
-                        problem_number=None
-                    )
-                    if result.get('success'):
-                        credits_deducted += 3
-                    else:
-                        self.log(f"Warning: Credit deduction for MCQ problem {i+1} failed")
-                        if result.get('error') == 'Insufficient credits':
-                            self.log("Insufficient credits - stopping deduction")
-                            break
-                except Exception as e:
-                    self.log(f"Error deducting credit for MCQ problem {i+1}: {e}")
-            
-            # Deduct credits for failed problems (1 credit each)
-            for i in range(self.problems_failed):
-                remaining_credits = self.api_client.get_credits()
-                if remaining_credits is not None and remaining_credits < 1:
-                    self.log(f"\nWARNING: No credits remaining for failed problem {i+1}")
-                    break
-                
-                try:
-                    result = self.api_client.deduct_credits(
-                        problem_type='code_completion',
-                        success=False,
-                        problem_number=None
-                    )
-                    if result.get('success'):
-                        credits_deducted += 1
-                except Exception as e:
-                    self.log(f"Error deducting failed credit {i+1}: {e}")
-            
-            # Deduct credits for skipped problems (1 credit each)
-            for i in range(self.problems_skipped):
-                remaining_credits = self.api_client.get_credits()
-                if remaining_credits is not None and remaining_credits < 1:
-                    self.log(f"\nWARNING: No credits remaining for skipped problem {i+1}")
-                    break
-                
-                try:
-                    result = self.api_client.deduct_credits(
-                        problem_type='code_completion',
-                        success=False,
-                        problem_number=None
-                    )
-                    if result.get('success'):
-                        credits_deducted += 1
-                except Exception as e:
-                    self.log(f"Error deducting skipped credit {i+1}: {e}")
-            
-            # Get final credits
-            final_credits = self.api_client.get_credits()
-            if final_credits is not None:
-                self.log(f"\nCredits deducted successfully: {credits_deducted}")
-                self.log(f"Remaining credits: {final_credits}")
-                
-                # Ensure credits are never negative on server
-                if final_credits < 0:
-                    self.log("WARNING: Negative credits detected - this should not happen!")
-            
-            self.log("="*50)
-            
         except Exception as e:
-            self.log(f"Error calculating credits: {e}")
+            self.log(f"Error deducting credits: {e}")
+            return False
     
     def get_final_result(self) -> Dict[str, Any]:
-        """Get final automation result"""
+        """Get final automation result with detailed tracking and credits"""
         duration = (self.end_time - self.start_time).total_seconds() if self.end_time else 0
+        
+        # Calculate credits
+        credit_info = self.calculate_credits()
         
         return {
             'success': True,
@@ -396,7 +379,9 @@ TARGET_ACCOUNT = {{
             'skipped': self.problems_skipped,
             'duration': duration,
             'start_time': self.start_time.isoformat() if self.start_time else None,
-            'end_time': self.end_time.isoformat() if self.end_time else None
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'problem_details': self.problem_details,
+            'credits': credit_info
         }
     
     def run_endless(self) -> Dict[str, Any]:
@@ -438,6 +423,9 @@ TARGET_ACCOUNT = {{
                 # Create automation instance
                 automation = CodeTantraPlaywrightAutomation(auto_login=False)
                 
+                # Set automation runner reference for credit deduction
+                automation.automation_runner = self
+                
                 # Run endless automation with asyncio
                 async def run_endless_automation():
                     from playwright.async_api import async_playwright
@@ -467,26 +455,44 @@ TARGET_ACCOUNT = {{
                                 "Target Account"
                             )
                             
+                            # Question matching is now handled inside the automation itself
+                            
                             # Run endless mode
-                            await automation.run_automation(num_problems=999999, endless_mode=True)
+                            result = await automation.run_automation(num_problems=999999, endless_mode=True)
                             
-                            # Update counters from automation
-                            self.problems_solved = automation.problems_solved
-                            self.problems_failed = automation.problems_failed
-                            self.problems_skipped = automation.problems_skipped
+                            # Check if automation returned an error
+                            if isinstance(result, dict) and result.get('error') == 'accounts_not_synced':
+                                return self.get_error_result("questions_not_synced")
                             
-                            # Get problem type tracking
-                            self.code_problems_solved = automation.code_problems_solved
-                            self.mcq_problems_solved = automation.mcq_problems_solved
-                            self.code_problems_failed = automation.code_problems_failed
-                            self.mcq_problems_failed = automation.mcq_problems_failed
+                            # Cleanup browsers only when automation completes successfully
+                            await automation.cleanup()
+                            
+                            # Get detailed problem summary from automation
+                            if hasattr(automation, 'get_problem_summary'):
+                                problem_summary = automation.get_problem_summary()
+                                # Update our tracking with the detailed results
+                                for question_type, counts in problem_summary['by_type'].items():
+                                    if question_type in self.problem_details:
+                                        self.problem_details[question_type] = counts
+                                
+                                # Update total counters
+                                self.problems_solved = problem_summary['total']['solved']
+                                self.problems_failed = problem_summary['total']['failed']
+                                self.problems_skipped = problem_summary['total']['skipped']
+                            else:
+                                # Fallback to basic tracking
+                                self.problems_solved = getattr(automation, 'problems_solved', 0)
+                                self.problems_failed = getattr(automation, 'problems_failed', 0)
+                                self.problems_skipped = getattr(automation, 'problems_skipped', 0)
+                            # Using detailed problem tracking instead of individual attributes
                             
                             # Calculate and deduct credits after completion
-                            self.deduct_credits_after_completion()
+                            # Credits are now deducted per problem, not at the end
                             
                         finally:
-                            # Ensure cleanup happens even if automation fails
-                            await automation.cleanup()
+                            # Only cleanup if automation actually completed or failed due to credits
+                            # Don't cleanup if problems don't match - keep browsers open
+                            pass
                 
                 # Execute the endless automation
                 asyncio.run(run_endless_automation())

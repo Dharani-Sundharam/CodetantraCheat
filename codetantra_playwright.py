@@ -41,6 +41,37 @@ class CodeTantraPlaywrightAutomation:
         self.error_log = []  # Track errors with problem numbers
         self.comment_remover = CommentRemover()
         self.code_handler = None  # Will be initialized after browsers are set up
+        
+        # Problem tracking for detailed reporting
+        self.problem_tracker = {
+            'code_completion': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'multiple_choice': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'fill_blank': {'solved': 0, 'failed': 0, 'skipped': 0},
+            'other': {'solved': 0, 'failed': 0, 'skipped': 0}
+        }
+    
+    def track_problem_result(self, question_type: str, result: str):
+        """Track problem result by type"""
+        if question_type not in self.problem_tracker:
+            question_type = 'other'
+        
+        if result in ['solved', 'failed', 'skipped']:
+            self.problem_tracker[question_type][result] += 1
+    
+    def get_problem_summary(self):
+        """Get detailed problem summary"""
+        total_solved = sum(tracker['solved'] for tracker in self.problem_tracker.values())
+        total_failed = sum(tracker['failed'] for tracker in self.problem_tracker.values())
+        total_skipped = sum(tracker['skipped'] for tracker in self.problem_tracker.values())
+        
+        return {
+            'total': {
+                'solved': total_solved,
+                'failed': total_failed,
+                'skipped': total_skipped
+            },
+            'by_type': self.problem_tracker
+        }
     
     async def maximize_and_zoom_browser(self, page, zoom_level=0.5):
         """Maximize browser window and set zoom level for better code visibility"""
@@ -710,17 +741,11 @@ class CodeTantraPlaywrightAutomation:
             # Switch to iframe first
             iframe = self.page_target.frame_locator("#course-iframe")
             
-            # Try submission up to 3 times with cleanup
-            for attempt in range(3):
-                print(f"  Attempt {attempt + 1}/3...")
+            # Try submission up to 2 times with cleanup
+            for attempt in range(2):
+                print(f"  Attempt {attempt + 1}/2...")
                 
-                # Step 1: Clean up extra brackets ONLY for code-based questions
-                if question_type == "code_completion":
-                    print("  Code completion detected - cleaning up extra brackets...")
-                    editor = iframe.locator("div.cm-content[contenteditable='true']")
-                    await self.cleanup_extra_brackets(editor)
-                else:
-                    print("  Non-code question - skipping bracket cleanup...")
+                # Deletion already done after typing, no need to delete again before submission
                 
                 # Step 2: Wait for submit button to be available
                 print("  Waiting for submit button to be available...")
@@ -730,7 +755,7 @@ class CodeTantraPlaywrightAutomation:
                     print("  ✓ Submit button found")
                 except Exception as e:
                     print(f"  ⚠ Submit button not found within 30 seconds: {e}")
-                    if attempt < 2:  # Not the last attempt
+                    if attempt < 1:  # Not the last attempt (changed from 2 to 1 for 2 attempts total)
                         print("  Retrying with more cleanup...")
                         continue
                     return False
@@ -751,7 +776,7 @@ class CodeTantraPlaywrightAutomation:
                     return True
                 else:
                     print("⚠ Submission failed, retrying with more cleanup...")
-                    if attempt < 2:  # Not the last attempt
+                    if attempt < 1:  # Not the last attempt (changed from 2 to 1 for 2 attempts total)
                         # Move to end and clean up more
                         await editor.press("Control+End")
                         await self.page_target.wait_for_timeout(200)
@@ -777,30 +802,32 @@ class CodeTantraPlaywrightAutomation:
             return False
     
     async def cleanup_extra_brackets(self, editor):
-        """Clean up any remaining auto-closed brackets by pressing Delete for 5 seconds"""
+        """Clean up any remaining auto-closed brackets by pressing Delete repeatedly for 12 seconds"""
         try:
-            print("  🧹 Cleaning up extra brackets (5 seconds)...")
+            print("  🧹 Cleaning up extra brackets (12 seconds, 20ms intervals)...")
             
-            # Press Delete continuously for 5 seconds to remove all extra brackets
-            start_time = await self.page_target.evaluate("() => Date.now()")
-            delete_duration = 5000  # 5 seconds in milliseconds
+            import time
             
-            while True:
-                current_time = await self.page_target.evaluate("() => Date.now()")
-                if current_time - start_time >= delete_duration:
-                    break
-                
-                # Press Delete key
+            # Focus the editor first
+            await editor.click()
+            await self.page_target.wait_for_timeout(100)
+            
+            # Press delete repeatedly for 12 seconds with 20ms intervals (no cursor positioning)
+            start_time = time.time()
+            delete_duration = 12  # 12 seconds
+            interval = 0.02  # 20ms = 0.02 seconds
+            
+            while time.time() - start_time < delete_duration:
                 await editor.press("Delete")
-                await self.page_target.wait_for_timeout(50)  # Small delay between presses
+                await self.page_target.wait_for_timeout(20)  # 20ms interval
             
-            print("  ✓ Cleanup complete (5 seconds of Delete)")
+            print("  ✓ Cleanup complete (12 seconds of repeated Delete presses)")
             
         except Exception as e:
             print(f"  ⚠ Cleanup failed: {e}")
     
     async def verify_submission_with_test_case(self):
-        """Verify submission by checking for test case success messages"""
+        """Verify submission by checking for test case success messages - prioritizes text-based verification"""
         try:
             print("🔍 Verifying submission result...")
             
@@ -809,7 +836,16 @@ class CodeTantraPlaywrightAutomation:
             # Wait a bit for results to load
             await self.page_target.wait_for_timeout(3000)
             
-            # Check for hidden test case success (1 hidden test case)
+            # PRIMARY: Check for "Test case passed successfully" text (user's preferred method)
+            try:
+                success_text = iframe.get_by_text("Test case passed successfully")
+                await success_text.wait_for(state="visible", timeout=5000)
+                print("✓ SUCCESS: 'Test case passed successfully' found!")
+                return True
+            except:
+                pass
+            
+            # SECONDARY: Check for hidden test case success (1 hidden test case)
             try:
                 hidden_success = iframe.get_by_text("out of 1 hidden test case(s) passed")
                 await hidden_success.wait_for(state="visible", timeout=5000)
@@ -818,7 +854,7 @@ class CodeTantraPlaywrightAutomation:
             except:
                 pass
             
-            # Check for shown test case success (2 shown test cases)
+            # TERTIARY: Check for shown test case success (2 shown test cases)
             try:
                 shown_success = iframe.get_by_text("out of 2 shown test case(s) passed")
                 await shown_success.wait_for(state="visible", timeout=5000)
@@ -827,7 +863,7 @@ class CodeTantraPlaywrightAutomation:
             except:
                 pass
             
-            # Check for other test case success patterns
+            # QUATERNARY: Check for other test case success patterns
             try:
                 # Look for any pattern like "out of X test case(s) passed"
                 test_success = iframe.get_by_text("test case(s) passed", exact=False)
@@ -837,24 +873,7 @@ class CodeTantraPlaywrightAutomation:
             except:
                 pass
             
-            # Fallback: Check for "Test case passed successfully" text
-            try:
-                success_text = iframe.get_by_text("Test case passed successfully")
-                await success_text.wait_for(state="visible", timeout=3000)
-                print("✓ SUCCESS: 'Test case passed successfully' found!")
-                return True
-            except:
-                pass
-            
-            # Alternative: Check for success badge
-            try:
-                badge = iframe.locator("div.badge.badge-secondary.badge-sm.badge-success")
-                await badge.wait_for(timeout=2000)
-                badge_text = await badge.text_content()
-                print(f"✓ SUCCESS: Badge found with text: {badge_text}")
-                return True
-            except:
-                pass
+            # Badge method removed as requested by user
             
             print("✗ FAILED: No test case success indicators found")
             return False
@@ -870,21 +889,51 @@ class CodeTantraPlaywrightAutomation:
             
             # Click Next on answers account
             iframe_answers = self.page_answers.frame_locator("#course-iframe")
-            next_answers = iframe_answers.get_by_role("button", name="Next")
+            
+            # Try multiple methods to find Next button
+            try:
+                # Method 1: By role
+                next_answers = iframe_answers.get_by_role("button", name="Next")
+                await next_answers.wait_for(state="visible", timeout=5000)
+            except:
+                try:
+                    # Method 2: By text
+                    next_answers = iframe_answers.get_by_text("Next", exact=True)
+                    await next_answers.wait_for(state="visible", timeout=5000)
+                except:
+                    # Method 3: By CSS selector
+                    next_answers = iframe_answers.locator("button:has-text('Next')")
+                    await next_answers.wait_for(state="visible", timeout=5000)
+            
             await next_answers.scroll_into_view_if_needed()
             await next_answers.click()
             print("  ✓ Clicked Next on answers account")
             
             # Click Next on target account
             iframe_target = self.page_target.frame_locator("#course-iframe")
-            next_target = iframe_target.get_by_role("button", name="Next")
+            
+            # Try multiple methods to find Next button
+            try:
+                # Method 1: By role
+                next_target = iframe_target.get_by_role("button", name="Next")
+                await next_target.wait_for(state="visible", timeout=5000)
+            except:
+                try:
+                    # Method 2: By text
+                    next_target = iframe_target.get_by_text("Next", exact=True)
+                    await next_target.wait_for(state="visible", timeout=5000)
+                except:
+                    # Method 3: By CSS selector
+                    next_target = iframe_target.locator("button:has-text('Next')")
+                    await next_target.wait_for(state="visible", timeout=5000)
+            
             await next_target.scroll_into_view_if_needed()
             await next_target.click()
             print("  ✓ Clicked Next on target account")
             
             # Wait for both pages to load and verify they match
             print("  Waiting for pages to load...")
-            await asyncio.sleep(1)  # Small initial wait
+            await asyncio.sleep(2)  # Increased wait time for page load
             
             # Verify both are on the same problem
             if await self.check_problems_match():
@@ -900,87 +949,92 @@ class CodeTantraPlaywrightAutomation:
     
     async def process_single_problem(self):
         """Process one problem: verify, answer, submit with error tracking"""
-        print("\n" + "="*60)
-        print("PROCESSING NEW PROBLEM")
-        print("="*60)
+        # Process problem silently (no console output)
         
         # Get current problem number for tracking
         current_problem = await self.get_current_problem_number(self.page_target)
         
         # Verify both are on same problem
         if not await self.check_problems_match():
-            print("⚠ Problems don't match - skipping")
             error_msg = "Problems don't match between accounts"
             self.error_log.append({
                 'problem': current_problem or "Unknown",
                 'error': error_msg
             })
-            print(f"✗ ERROR: {error_msg}")
             return False
-        
-        print("✓ Problem verified - processing answer...")
         
         # Detect question type for appropriate handling
         question_type = await self.detect_question_type(self.page_answers)
-        print(f"  Question type detected: {question_type}")
         
         try:
             # Handle the question (copy/paste or select answers)
             result = await self.handle_question_answer()
             
             if result == "skip":
-                print("✓ Question skipped - moving to next")
                 return "skipped"  # Special return value for skipped questions
                 
             elif result == True:
-                print("✓ Answer processed successfully")
-                
                 # Submit the solution
-                print("  Attempting to submit...")
                 try:
                     submit_success = await self.submit_solution(question_type)
                     
                     if submit_success:
-                        print("✓ Solution submitted")
                         # For code completion: verify with test cases
                         if question_type == "code_completion":
                             if await self.check_submission_success():
-                                print("✓ Submission successful!")
+                                self.track_problem_result(question_type, 'solved')
+                                # Deduct credits for solved problem
+                                if hasattr(self, 'automation_runner'):
+                                    self.automation_runner.deduct_credits_for_problem(question_type, True)
                                 return True
                             else:
-                                print("⚠ Submission verification failed - skipping problem")
                                 self.error_log.append({
                                     'problem': current_problem or "Unknown",
                                     'error': "Submission verification failed - test case not passed"
                                 })
+                                self.track_problem_result(question_type, 'skipped')
+                                # Deduct credits for skipped problem
+                                if hasattr(self, 'automation_runner'):
+                                    self.automation_runner.deduct_credits_for_problem(question_type, False)
                                 return "skipped"
                         else:
                             # For non-code questions: just wait a moment and proceed
-                            print("✓ Non-code question submitted - proceeding to next...")
                             await self.page_target.wait_for_timeout(2000)  # Wait 2 seconds
+                            self.track_problem_result(question_type, 'solved')
+                            # Deduct credits for solved problem
+                            if hasattr(self, 'automation_runner'):
+                                self.automation_runner.deduct_credits_for_problem(question_type, True)
                             return True
                     else:
-                        print("⚠ Submit failed - skipping problem")
                         self.error_log.append({
                             'problem': current_problem or "Unknown",
                             'error': "Submit button not found"
                         })
+                        self.track_problem_result(question_type, 'skipped')
+                        # Deduct credits for skipped problem
+                        if hasattr(self, 'automation_runner'):
+                            self.automation_runner.deduct_credits_for_problem(question_type, False)
                         return "skipped"
                 except Exception as e:
-                    print(f"⚠ Error during submission: {e} - skipping problem")
                     self.error_log.append({
                         'problem': current_problem or "Unknown",
                         'error': f"Submission error: {str(e)}"
                     })
+                    self.track_problem_result(question_type, 'skipped')
+                    # Deduct credits for skipped problem
+                    if hasattr(self, 'automation_runner'):
+                        self.automation_runner.deduct_credits_for_problem(question_type, False)
                     return "skipped"
             else:
-                print("⚠ Failed to process answer - skipping problem")
                 error_msg = "Failed to process answer"
                 self.error_log.append({
                     'problem': current_problem or "Unknown",
                     'error': error_msg
                 })
-                print(f"✗ ERROR: {error_msg}")
+                self.track_problem_result(question_type, 'failed')
+                # Deduct credits for failed problem
+                if hasattr(self, 'automation_runner'):
+                    self.automation_runner.deduct_credits_for_problem(question_type, False)
                 return False
                 
         except Exception as e:
@@ -989,87 +1043,75 @@ class CodeTantraPlaywrightAutomation:
                 'problem': current_problem or "Unknown",
                 'error': error_msg
             })
-            print(f"✗ ERROR: {error_msg}")
-            import traceback
-            traceback.print_exc()
+            self.track_problem_result(question_type, 'failed')
+            # Deduct credits for failed problem
+            if hasattr(self, 'automation_runner'):
+                self.automation_runner.deduct_credits_for_problem(question_type, False)
             return False
     
     async def run_automation(self, num_problems=None):
         """Main automation loop"""
-        print("\n" + "="*60)
-        print("STARTING AUTOMATION - FULL MODE")
-        print("(Copy/paste ENABLED - full automation active)")
-        print("="*60)
+        # Keep checking until problems match (no early return)
+        while not await self.check_problems_match():
+            print("Problems don't match - waiting for user to sync...")
+            await asyncio.sleep(3)  # Wait 3 seconds before checking again
         
-        # Initial check if problems match
-        print("\nInitial problem check:")
-        if not await self.check_problems_match():
-            print("\n" + "="*60)
-            print("⚠ WARNING: Accounts are on DIFFERENT problems!")
-            print("="*60)
-            print("Please manually navigate both accounts to the SAME problem.")
-            input("Press ENTER when ready...")
-            
-            # Re-check
-            if not await self.check_problems_match():
-                print("✗ Still different. Exiting.")
-                return
+        print("Problems matched - starting automation")
         
-        print("✓ Both accounts on same problem - starting...")
+        # Both accounts are on same problem - proceed
         
         problems_completed = 0
         problems_failed = 0
         problems_skipped = 0
+        total_problems_processed = 0
         
         try:
             while True:
-                if num_problems and problems_completed >= num_problems:
-                    print(f"\n✓ Completed {num_problems} problems as requested")
-                    break
+                # Check if we have enough credits for the next problem
+                if hasattr(self, 'automation_runner'):
+                    current_credits = self.automation_runner.api_client.get_credits()
+                    if current_credits is not None and current_credits < 1:
+                        print("Insufficient credits to continue - stopping automation")
+                        break
                     
                 # Process current problem
                 result = await self.process_single_problem()
+                total_problems_processed += 1
                 
                 if result == True:
                     problems_completed += 1
-                    print(f"\n✓ Problem {problems_completed} completed successfully!")
+                    print(f"✓ Problem {total_problems_processed} completed successfully")
                 elif result == "skipped":
                     problems_skipped += 1
-                    print(f"\n✓ Problem skipped (Total skipped: {problems_skipped})")
+                    print(f"⏭️ Problem {total_problems_processed} skipped")
                 else:
                     problems_failed += 1
-                    print(f"\n⚠ Problem failed (Total failures: {problems_failed})")
+                    print(f"✗ Problem {total_problems_processed} failed")
+                
+                # Check if we've reached the target number of total problems processed
+                if num_problems and total_problems_processed >= num_problems:
+                    print(f"✓ Processed {num_problems} problems as requested - stopping automation")
+                    break
                     
                 # Move to next
                 if not await self.move_to_next_problem():
-                    print("\n✓ Reached end of problems")
+                    print("✓ Reached end of problems - stopping automation")
                     break
                     
                 # Small pause between problems
                 await asyncio.sleep(2)
                 
         except KeyboardInterrupt:
-            print("\n\n⚠ Automation stopped by user")
+            pass  # Automation stopped by user
             
-        print("\n" + "="*60)
-        print("AUTOMATION COMPLETE - FINAL REPORT")
-        print("="*60)
-        print(f"✓ Problems Solved: {problems_completed}")
-        print(f"⊘ Problems Skipped: {problems_skipped}")
-        print(f"✗ Problems Failed: {problems_failed}")
-        print("="*60)
+        # Get detailed problem summary for UI reporting
+        summary = self.get_problem_summary()
         
-        # Show detailed error log if there were failures
-        if len(self.error_log) > 0:
-            print("\n📋 DETAILED ERROR LOG:")
-            print("="*60)
-            for i, error_entry in enumerate(self.error_log, 1):
-                print(f"{i}. Problem {error_entry['problem']}")
-                print(f"   Error: {error_entry['error']}")
-            print("="*60)
-        else:
-            print("\n🎉 No errors encountered! All problems processed successfully!")
-            print("="*60)
+        # Store summary for UI display (no console output)
+        self.final_summary = summary
+        
+        # Store error log for UI display (no console output)
+        self.final_error_log = self.error_log
     
     async def cleanup(self):
         """Properly close browsers and contexts to avoid asyncio warnings"""

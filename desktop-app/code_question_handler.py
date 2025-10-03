@@ -129,7 +129,7 @@ class CodeQuestionHandler:
             print("📋 Extracting structured lines from answers account...")
             
             # First, maximize and zoom the answers page for better code visibility
-            await self.maximize_and_zoom_browser(self.page_answers, zoom_level=0.5)
+            # Zoom functionality removed as requested
             
             iframe = self.page_answers.frame_locator("#course-iframe")
             editor = iframe.locator("div.cm-content[contenteditable='true']")
@@ -416,26 +416,58 @@ class CodeQuestionHandler:
             print(f"  ⚠ Error in type_code_safely: {e}")
             raise
     
+    async def cleanup_trailing_braces(self, editor):
+        """Clean up any trailing '}' characters after typing code"""
+        try:
+            # Get current content to check for trailing braces
+            current_content = await editor.text_content()
+            if not current_content:
+                return
+            
+            # Count trailing braces
+            trailing_braces = 0
+            for char in reversed(current_content.strip()):
+                if char == '}':
+                    trailing_braces += 1
+                else:
+                    break
+            
+            if trailing_braces > 0:
+                # Hold delete key for 12 seconds to remove all trailing braces
+                await editor.press("Delete", delay=12000)  # Hold delete for 12 seconds
+                
+                # Verify cleanup - check if there are still characters after cursor
+                await self.page_target.wait_for_timeout(200)
+                final_content = await editor.text_content()
+                
+                # If there are still trailing braces, try a more aggressive approach
+                if final_content and final_content.strip().endswith('}'):
+                    # Select all and check for trailing braces
+                    await editor.press("Control+End")  # Go to end
+                    await self.page_target.wait_for_timeout(100)
+                    
+                    # Hold delete for another 12 seconds
+                    await editor.press("Delete", delay=12000)
+                
+        except Exception as e:
+            pass  # Silent error handling
+    
     async def paste_code_to_target(self, code):
         """Paste code into the target account editor with enhanced reliability"""
         try:
-            print("📝 Pasting code to target account...")
-            
             if not code or not code.strip():
-                print("⚠ No code to paste")
                 return False
             
             # Detect language and clean the code using comment remover
             detected_lang = self.detect_code_language(code)
-            print(f"  Language: {detected_lang} | Cleaning code...")
             try:
                 cleaned_code = self.comment_remover.remove_comments(code, detected_lang)
                 code = cleaned_code
             except Exception as e:
-                print(f"  ⚠ Comment removal failed: {e}")
+                pass
             
             # First, maximize and zoom the target page for better code visibility
-            await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
+            # Zoom functionality removed as requested
             
             # Switch to iframe first
             iframe = self.page_target.frame_locator("#course-iframe")
@@ -455,35 +487,7 @@ class CodeQuestionHandler:
             await editor.press("Delete")
             await self.page_target.wait_for_timeout(500)
             
-            # Method 1: Try using clipboard (Ctrl+V) first
-            try:
-                # Set clipboard content using JavaScript with proper escaping
-                await self.page_target.evaluate("""
-                    (code) => {
-                        navigator.clipboard.writeText(code).then(() => {
-                            console.log('Code copied to clipboard');
-                        }).catch(err => {
-                            console.log('Clipboard failed:', err);
-                        });
-                    }
-                """, code)
-                
-                await self.page_target.wait_for_timeout(500)
-                await editor.press("Control+v")
-                await self.page_target.wait_for_timeout(1000)
-                
-                # Verify paste was successful
-                pasted_content = await editor.text_content()
-                if pasted_content and len(pasted_content.strip()) > 0:
-                    print("✓ Code pasted via clipboard")
-                    return True
-                else:
-                    print("⚠ Clipboard paste failed, trying line-by-line...")
-                    
-            except Exception:
-                print("⚠ Clipboard paste failed, trying line-by-line...")
-            
-            # Method 2: Line-by-line typing with better error handling
+            # Type code line-by-line (clipboard paste removed as requested)
             lines = code.split('\n')
             print(f"  Typing {len(lines)} lines...")
             
@@ -508,19 +512,31 @@ class CodeQuestionHandler:
                 # Small delay between lines for stability
                 await self.page_target.wait_for_timeout(100)
             
+            # Typing is done - now delete trailing characters immediately
+            # Press delete repeatedly for 12 seconds with 20ms intervals
+            import time
+            start_time = time.time()
+            delete_duration = 12  # 12 seconds
+            
+            print("  Deleting trailing characters (12 seconds, 20ms intervals)...")
+            while time.time() - start_time < delete_duration:
+                await editor.press("Delete")
+                await self.page_target.wait_for_timeout(20)  # 20ms interval
+            print("  ✓ Deletion complete")
+            
             # Verify the paste was successful
             await self.page_target.wait_for_timeout(1000)
             pasted_content = await editor.text_content()
             
             if pasted_content and len(pasted_content.strip()) > 0:
-                print(f"✓ Code pasted successfully ({len(lines)} lines)")
+                print(f"✓ Code typed successfully ({len(lines)} lines)")
                 return True
             else:
-                print("⚠ Paste verification failed - no content detected")
+                print("⚠ Type verification failed - no content detected")
                 return False
             
         except Exception as e:
-            print(f"⚠ Error pasting code: {e}")
+            print(f"⚠ Error typing code: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -564,7 +580,7 @@ class CodeQuestionHandler:
             print("📝 Using Strategy B: Comment static lines then paste complete code...")
             
             # First, maximize and zoom the target page for better code visibility
-            await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
+            # Zoom functionality removed as requested
             
             iframe_target = self.page_target.frame_locator("#course-iframe")
             editor = iframe_target.locator("div.cm-content[contenteditable='true']")
@@ -630,6 +646,9 @@ class CodeQuestionHandler:
                 if i < len(lines) - 1:
                     await editor.press("Enter")
                     await self.page_target.wait_for_timeout(50)  # Slightly slower for reliability
+            
+            # Clean up any trailing braces
+            await self.cleanup_trailing_braces(editor)
             
             # Verify what was actually typed
             try:
