@@ -40,6 +40,11 @@ class CodeTantraApp:
         # Configure root background
         self.root.configure(bg=self.bg_color)
         
+        # Show disclaimer first
+        if not self.show_disclaimer():
+            self.root.quit()
+            return
+        
         # Initialize config manager and API client
         self.config = config_manager.ConfigManager()
         self.api_client = api_client.APIClient()
@@ -82,6 +87,126 @@ class CodeTantraApp:
             self.root.after(2000, self.show_fallback_warning)
             return False
     
+    def show_disclaimer(self):
+        """Show disclaimer dialog before application starts"""
+        disclaimer_window = tk.Toplevel(self.root)
+        disclaimer_window.title("Disclaimer - Educational Use Only")
+        disclaimer_window.geometry("600x400")
+        disclaimer_window.resizable(False, False)
+        disclaimer_window.configure(bg=self.bg_color)
+        
+        # Center the window
+        disclaimer_window.transient(self.root)
+        disclaimer_window.grab_set()
+        
+        # Make window appear in center of screen
+        disclaimer_window.update_idletasks()
+        x = (disclaimer_window.winfo_screenwidth() // 2) - (600 // 2)
+        y = (disclaimer_window.winfo_screenheight() // 2) - (400 // 2)
+        disclaimer_window.geometry(f"600x400+{x}+{y}")
+        
+        # Main frame
+        main_frame = tk.Frame(disclaimer_window, bg=self.bg_color, padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        title_label = tk.Label(
+            main_frame,
+            text="IMPORTANT DISCLAIMER",
+            font=("Arial", 16, "bold"),
+            fg="#ff6b6b",
+            bg=self.bg_color
+        )
+        title_label.pack(pady=(0, 20))
+        
+        # Disclaimer text
+        disclaimer_text = """
+This software is provided for EDUCATIONAL PURPOSES ONLY.
+
+By using this application, you acknowledge and agree that:
+
+• This tool is intended solely for educational and learning purposes
+• You are using this software at your own risk
+• The developers are NOT responsible for any consequences of using this software
+• You are responsible for complying with all applicable terms of service
+• Any misuse of this software is strictly prohibited
+• Academic integrity policies must be followed at all times
+
+The developers disclaim all liability for any damages, losses, or consequences
+resulting from the use of this software.
+
+If you do not agree with these terms, please close this application immediately.
+        """
+        
+        text_widget = tk.Text(
+            main_frame,
+            height=15,
+            width=70,
+            wrap=tk.WORD,
+            font=("Arial", 10),
+            bg=self.entry_bg,
+            fg=self.fg_color,
+            relief=tk.FLAT,
+            borderwidth=0,
+            padx=10,
+            pady=10
+        )
+        text_widget.pack(pady=(0, 20))
+        text_widget.insert(tk.END, disclaimer_text.strip())
+        text_widget.config(state=tk.DISABLED)
+        
+        # Button frame
+        button_frame = tk.Frame(main_frame, bg=self.bg_color)
+        button_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Agree button
+        agree_btn = tk.Button(
+            button_frame,
+            text="I AGREE - Continue",
+            command=lambda: self.accept_disclaimer(disclaimer_window),
+            bg="#4CAF50",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            relief=tk.FLAT,
+            padx=20,
+            pady=8,
+            cursor="hand2"
+        )
+        agree_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Disagree button
+        disagree_btn = tk.Button(
+            button_frame,
+            text="I DISAGREE - Exit",
+            command=lambda: self.reject_disclaimer(disclaimer_window),
+            bg="#f44336",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            relief=tk.FLAT,
+            padx=20,
+            pady=8,
+            cursor="hand2"
+        )
+        disagree_btn.pack(side=tk.LEFT)
+        
+        # Store the result
+        self.disclaimer_accepted = False
+        
+        # Wait for user response
+        disclaimer_window.wait_window()
+        
+        return self.disclaimer_accepted
+    
+    def accept_disclaimer(self, window):
+        """User accepted the disclaimer"""
+        self.disclaimer_accepted = True
+        window.destroy()
+    
+    def reject_disclaimer(self, window):
+        """User rejected the disclaimer"""
+        self.disclaimer_accepted = False
+        window.destroy()
+
     def show_api_warning_dialog(self):
         """Show warning dialog when API is not available - BLOCKS usage in offline mode"""
         print("[DEBUG] Showing API warning dialog...")

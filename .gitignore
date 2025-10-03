@@ -44,6 +44,7 @@ geckodriver.log
 
 # Credentials (IMPORTANT: Never commit credentials!)
 credentials.py
+desktop-app/credentials.py
 .clinerules/byterover-rules.md
 .kilocode/rules/byterover-rules.md
 .roo/rules/byterover-rules.md
