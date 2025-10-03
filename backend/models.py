@@ -1,6 +1,6 @@
 """
 Database Models for CodeTantra Automation Service
-SQLite + SQLAlchemy ORM
+PostgreSQL + SQLAlchemy ORM
 """
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float

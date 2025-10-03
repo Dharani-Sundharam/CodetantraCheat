@@ -1,5 +1,6 @@
 """
 Database Configuration and Session Management
+PostgreSQL + SQLAlchemy ORM
 """
 
 from sqlalchemy import create_engine
@@ -9,11 +10,36 @@ from passlib.context import CryptContext
 from contextlib import contextmanager
 import os
 
-# Use absolute path to ensure single database in root folder
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATABASE_URL = f"sqlite:///{os.path.join(root_dir, 'codetantra.db')}"
+# Database URL configuration
+# For production (Render), use environment variable
+# For development, fallback to SQLite
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+if not DATABASE_URL:
+    # Development fallback to SQLite
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DATABASE_URL = f"sqlite:///{os.path.join(root_dir, 'codetantra.db')}"
+    print("Using SQLite for development")
+else:
+    # Production PostgreSQL
+    print("Using PostgreSQL for production")
+    # Render provides DATABASE_URL in format: postgresql://user:pass@host:port/dbname
+    # Convert to postgresql+psycopg2:// for SQLAlchemy
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+# Create engine with appropriate settings
+if "sqlite" in DATABASE_URL:
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # PostgreSQL settings
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,  # Verify connections before use
+        pool_recycle=300,    # Recycle connections every 5 minutes
+        echo=False           # Set to True for SQL debugging
+    )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
