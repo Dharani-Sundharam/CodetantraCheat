@@ -427,11 +427,23 @@ class CodeQuestionHandler:
             await editor.click()
             await self.page_target.wait_for_timeout(500)
             
-            # Clear existing content more reliably
+            # Clear existing content and comment it
             await editor.press("Control+a")
             await self.page_target.wait_for_timeout(300)
-            await editor.press("Delete")
+            await editor.press("Control+/")  # Comment existing content
             await self.page_target.wait_for_timeout(500)
+            
+            # Move to end and add 3 new lines
+            await editor.press("Control+End")
+            await self.page_target.wait_for_timeout(200)
+            
+            # Press Enter 3 times to create space
+            await editor.press("Enter")
+            await self.page_target.wait_for_timeout(100)
+            await editor.press("Enter")
+            await self.page_target.wait_for_timeout(100)
+            await editor.press("Enter")
+            await self.page_target.wait_for_timeout(100)
             
             # Type code line-by-line (clipboard paste removed as requested)
             lines = code.split('\n')
@@ -525,7 +537,6 @@ class CodeQuestionHandler:
         try:
             print("📝 Using Strategy B: Comment static lines then paste complete code...")
             
-            # First, maximize and zoom the target page for better code visibility
             # Zoom functionality removed as requested
             
             iframe_target = self.page_target.frame_locator("#course-iframe")
@@ -579,20 +590,33 @@ class CodeQuestionHandler:
                 if line.strip():
                     try:
                         # Type with moderate speed for reliability
-                        await self.type_code_safely(editor, line, delay=10)
-                    except Exception:
+                        await self.type_code_safely(editor, line, delay=20)
+                    except Exception as e:
+                        print(f"    ⚠ Error typing line {i+1}: {e}")
                         # Try simple typing as fallback
                         try:
                             await editor.type(line, delay=20)
-                        except Exception:
+                        except Exception as e2:
+                            print(f"    ⚠ Fallback typing also failed for line {i+1}: {e2}")
                             continue
                 else:
                     pass
                 
                 if i < len(lines) - 1:
                     await editor.press("Enter")
-                    await self.page_target.wait_for_timeout(50)  # Slightly slower for reliability
+                    await self.page_target.wait_for_timeout(100)  # Slower for better reliability
             
+            # Typing is done - now delete trailing characters immediately
+            # Press delete repeatedly for 12 seconds with 20ms intervals
+            import time
+            start_time = time.time()
+            delete_duration = 12  # 12 seconds
+            
+            print("  Deleting trailing characters (12 seconds, 20ms intervals)...")
+            while time.time() - start_time < delete_duration:
+                await editor.press("Delete")
+                await self.page_target.wait_for_timeout(20)  # 20ms interval
+            print("  ✓ Deletion complete")
             
             # Verify what was actually typed
             try:

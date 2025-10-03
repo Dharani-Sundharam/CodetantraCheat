@@ -1,229 +1,235 @@
-# CodeTantra Automation Desktop App
+# CodeTantra Automation
 
-## Overview
+A powerful automation tool for CodeTantra platform that helps automate coding assignments and assessments.
 
-This is the desktop application branch containing the Tkinter-based desktop client for the CodeTantra Automation Service. This branch focuses on the local automation tool that connects to the web API for credits management.
+## 🚀 Quick Start
 
-## Components
+### For Users:
+1. **Download** `install.bat` and `run.bat` files
+2. **Run** `install.bat` to clone repository and install dependencies
+3. **Configure** your credentials in `CodeTantraAutomation/credentials.py`
+4. **Run** `run.bat` to start the application
 
-### Desktop Application (`desktop-app/`)
-- **Tkinter GUI** with professional dark theme
-- **API Client** for backend communication
-- **Config Manager** for local settings storage
-- **Automation Runner** that integrates with the core automation
-- **Windows Installer** script for easy distribution
+### For Developers:
+1. **Clone** the repository: `git clone -b desktop-app <repository-url>`
+2. **Install** Python 3.8+ and dependencies: `pip install -r requirements.txt`
+3. **Configure** credentials in `credentials.py`
+4. **Run** the application: `python desktop-app/main.py`
 
-### Core Automation (`codetantra_playwright.py`)
-- **Playwright-based** automation engine
-- **Smart problem detection** and solving
-- **Multi-language support** (Java, C++, Python, etc.)
-- **Code completion** and multiple choice handling
-- **Error handling** and retry mechanisms
+## 📋 System Requirements
 
-### Configuration Files
-- **config.py** - Main configuration settings
-- **credentials.py** - Account credentials (auto-generated)
-- **requirements.txt** - Python dependencies
+- **Windows 10/11**
+- **Python 3.8+**
+- **Internet connection** (for API calls and browser installation)
+- **Administrator rights** (for browser installation)
 
-## Features
+## 🛠️ Installation
 
-- Professional dark themed interface
-- Secure API-based authentication
-- Real-time automation logging
-- Automatic credit deduction
-- Local configuration storage
-- Problem success tracking
-- Report generation
-- Windows installer support
+### Automatic Installation (Recommended)
+```bash
+# Run the installer (clones repo and installs everything)
+install.bat
+```
 
-## Quick Start
-
-### Installation
+### Manual Installation
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd CodetantraCheat
+git clone -b desktop-app <repository-url>
+cd CodeTantraAutomation
 
-# Install dependencies
+# Install Python packages
 pip install -r requirements.txt
 
-# Install Playwright browsers
-playwright install firefox
+# Install browsers
+python -m playwright install firefox chromium webkit
+```
 
-# Run the application
+## 🎯 Usage
+
+### Starting the Application
+```bash
+# Simple way (from parent directory)
+run.bat
+
+# Or directly (from CodeTantraAutomation directory)
 python desktop-app/main.py
 ```
 
-### Building Executable
-```bash
-cd desktop-app
-pip install -r requirements.txt
-playwright install firefox
-build_exe.bat  # Windows
-# Or manually:
-pyinstaller --onefile --windowed --name CodeTantraAutomation --icon=icon.ico main.py
-```
+### Configuration
+1. **Edit** `CodeTantraAutomation/credentials.py` with your CodeTantra credentials
+2. **Configure** `CodeTantraAutomation/config.py` for API settings
+3. **Run** the application
 
-## Configuration
+## 🔒 Application Features
 
-### API Settings
-Update the API URL in `desktop-app/api_client.py`:
-```python
-def __init__(self, base_url: str = "https://your-api-domain.com"):
-```
+### Core Functionality
+- **Automated problem solving** - Handles various question types
+- **Browser automation** - Uses Playwright for reliable automation
+- **API integration** - Real-time credit tracking and user management
+- **Modern UI** - Dark-themed desktop interface
 
-### Automation Settings
-The app stores settings in:
-- Windows: `%APPDATA%\CodeTantraAutomation\`
-- Mac/Linux: `~/.codetantra_automation/`
-
-### Credentials
-Credentials are managed through the GUI and stored securely in AppData.
-
-## Usage
-
-### First Time Setup
-1. Launch the application
-2. Login with your web account credentials
-3. Enter CodeTantra URL and account details
-4. Set number of problems to solve
-5. Click "Start Automation"
-
-### Configuration Fields
-- **CodeTantra URL**: Your institution's CodeTantra URL
-- **Answers Account**: Account with correct solutions
-- **Target Account**: Account to submit solutions to
-- **Number of Problems**: How many problems to solve (0 for all)
-
-### Credits System
-- Code completion success: 5 credits
-- Other problems success: 3 credits
-- Failed problem: 1 credit
-- Credits are deducted automatically via API
-
-## File Structure
+## 📁 Project Structure
 
 ```
-desktop-app/
-├── main.py              - Main GUI application
-├── api_client.py        - API communication
-├── config_manager.py    - Settings management
-├── automation_runner.py - Automation integration
-├── installer.iss        - Windows installer script
-├── build_exe.bat        - Build automation
-├── requirements.txt     - Dependencies
-└── README.md           - This file
-
-Core Files:
-├── codetantra_playwright.py - Main automation engine
-├── config.py               - Configuration
-├── credentials.py          - Account credentials
-└── requirements.txt        - Dependencies
+CodeTantraAutomation/
+├── desktop-app/              # Main application
+│   ├── main.py              # Desktop UI
+│   ├── automation_runner.py # Automation orchestrator
+│   ├── code_question_handler.py # Code handling
+│   ├── api_client.py        # API communication
+│   ├── config_manager.py    # Configuration management
+│   ├── config.py           # Application configuration
+│   ├── credentials.py      # User credentials
+│   ├── comment_remover.py  # Code processing utility
+│   └── codetantra_playwright.py # Main automation logic
+├── install.bat            # Installation script
+├── run.bat               # Application launcher
+└── README.md             # This file
 ```
 
-## Building for Distribution
+## 🔧 Features
 
-### Step 1: Create Executable
-```bash
-cd desktop-app
-build_exe.bat
-```
+### Automation Capabilities
+- **Code completion** questions
+- **Multiple choice** questions  
+- **Fill in the blank** questions
+- **Automatic submission** and verification
+- **Error handling** and retry logic
 
-### Step 2: Create Installer
-1. Install Inno Setup from https://jrsoftware.org/isinfo.php
-2. Open `installer.iss` in Inno Setup Compiler
-3. Click "Build" > "Compile"
-4. Installer created in `installer_output/`
+### User Interface
+- **Modern dark theme** Tkinter interface
+- **Real-time progress** tracking
+- **Detailed reporting** and statistics
+- **Credit system** integration
+- **API connectivity** status
 
-### Step 3: Upload to GitHub Releases
-1. Create new release on GitHub
-2. Upload installer .exe file
-3. Add release notes
+### Browser Automation
+- **Playwright integration** for reliable automation
+- **Multi-browser support** (Firefox, Chromium, WebKit)
+- **Automatic browser** installation
+- **Cross-platform** compatibility
 
-## API Integration
+## 📊 Credit System
 
-The desktop app connects to the web API for:
-- User authentication
-- Credits management
-- Usage tracking
-- Problem reporting
+The application includes a credit system that:
+- **Tracks usage** by question type
+- **Calculates costs** automatically
+- **Integrates with API** for real-time deduction
+- **Provides detailed** usage reports
 
-Default API URL: `http://localhost:8000`
+### Credit Rates:
+- **Code-based questions**: 5 credits
+- **Non-code questions**: 3 credits
+- **Failed/unsolved**: 1 credit
 
-For production, update the API URL in `api_client.py`.
+## 🛡️ Application Protection
 
-## Troubleshooting
+### Built-in Features
+1. **API Authentication**
+   - Secure login system
+   - Token-based authentication
+   - User session management
+
+2. **Credential Security**
+   - Local credential storage
+   - Password masking in UI
+   - Secure configuration management
+
+3. **Error Handling**
+   - Comprehensive error catching
+   - Graceful failure handling
+   - User-friendly error messages
+
+4. **Data Validation**
+   - Input validation
+   - Configuration verification
+   - API response validation
+
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-**Cannot connect to API**
-- Check if backend server is running
-- Verify API URL in settings
+#### "Python not found"
+- Install Python 3.8+ from [python.org](https://www.python.org/downloads/)
+- Make sure to check "Add Python to PATH" during installation
+
+#### "Packages not installed"
+- Run `install.bat` to install all dependencies
+- Or install manually: `pip install -r requirements.txt`
+
+#### "Browser installation failed"
 - Check internet connection
+- Run as administrator
+- Try manual installation: `python -m playwright install firefox`
 
-**Login fails**
-- Verify email and password
-- Check if account is verified
-- Ensure backend is accessible
+#### "Application crashes or errors"
+- Check Python version compatibility
+- Verify all dependencies are installed
+- Check configuration files for errors
 
-**Automation errors**
-- Check CodeTantra credentials
-- Verify Playwright browsers are installed
-- Check logs in AppData folder
+### Getting Help
+1. **Check** the troubleshooting section above
+2. **Verify** system requirements
+3. **Test** the application with sample data
+4. **Contact** support if issues persist
 
-**Insufficient credits**
-- Purchase more credits on website
-- Check current balance in header
+## 📝 Configuration
 
-### Logs
-
-Logs are saved to:
+### Credentials (`CodeTantraAutomation/credentials.py`)
+```python
+LOGIN_URL = "https://your-codetantra-url.com"
+ANSWERS_ACCOUNT = {
+    "username": "your_username",
+    "password": "your_password"
+}
+TARGET_ACCOUNT = {
+    "username": "your_username", 
+    "password": "your_password"
+}
 ```
-%APPDATA%\CodeTantraAutomation\logs\
+
+### API Configuration (`CodeTantraAutomation/config.py`)
+```python
+API_BASE_URL = "https://your-api-url.com"
+API_KEY = "your_api_key"
+CREDIT_SYSTEM_ENABLED = True
 ```
 
-Each automation run creates a new log file with timestamp.
+## 🚨 Important Notes
 
-## Development
+### Legal and Ethical Use
+- **Use responsibly** and in accordance with platform terms
+- **Respect** academic integrity policies
+- **Follow** local laws and regulations
+- **Don't abuse** the automation system
 
-### Adding Features
-1. Create new module in desktop-app/
-2. Import in main.py
-3. Add UI elements in show_main_screen()
-4. Test thoroughly
+### Best Practices
+- **Keep credentials** secure and private
+- **Don't share** your API keys
+- **Use** official sources only
+- **Test** with sample data first
 
-### Project Structure
-- `main.py` - Main GUI application
-- `api_client.py` - API communication
-- `config_manager.py` - Settings management
-- `automation_runner.py` - Automation integration
+## 📄 License
 
-## Security
+This project is for educational purposes only. Please use responsibly and in accordance with all applicable terms of service and laws.
 
-- Credentials stored locally only
-- Passwords not sent to any server except authentication
-- Token stored securely in AppData
-- All API communication uses HTTPS in production
+## 🤝 Contributing
 
-## Updates
+1. **Fork** the repository
+2. **Create** a feature branch
+3. **Make** your changes
+4. **Test** thoroughly
+5. **Submit** a pull request
 
-The app checks for updates from GitHub Releases.
+## 📞 Support
 
-To update manually:
-1. Download latest installer
-2. Run installer (upgrades existing installation)
-
-## Support
-
-For issues:
-1. Check logs in AppData folder
-2. Verify API connection
-3. Contact support with log files
-
-## License
-
-Educational purposes only. Use responsibly.
+For support and questions:
+- **Check** the troubleshooting section
+- **Review** the documentation
+- **Open** an issue on GitHub
+- **Contact** the development team
 
 ---
 
-**Note:** This is the desktop app branch. For the complete system with web platform, see the main branch.
+**CodeTantra Automation v1.0.0**  
+*Automate with confidence, learn with integrity*

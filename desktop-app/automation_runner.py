@@ -10,10 +10,8 @@ from pathlib import Path
 from typing import Dict, Any, Callable
 from datetime import datetime
 
-# Add parent directory to path to import codetantra_playwright
-parent_dir = str(Path(__file__).parent.parent)
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+# Import codetantra_playwright from same directory
+import codetantra_playwright
 
 class AutomationRunner:
     def __init__(self, config: Dict[str, Any], api_client, log_callback: Callable[[str], None]):
