@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help Center - CodeTantra Automation</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <style>
+        .help-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .help-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .help-header h1 {
+            font-size: 2.5rem;
+            color: var(--gray-800);
+            margin-bottom: 15px;
+        }
+        
+        .help-header p {
+            font-size: 1.2rem;
+            color: var(--gray-600);
+        }
+        
+        .help-search {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Times New Roman', Times, serif;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .faq-section {
+            margin-bottom: 40px;
+        }
+        
+        .faq-section h2 {
+            font-size: 1.8rem;
+            color: var(--gray-800);
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+        }
+        
+        .faq-item {
+            background: white;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .faq-question {
+            padding: 20px;
+            background: var(--gray-50);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--gray-800);
+            border: none;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Times New Roman', Times, serif;
+        }
+        
+        .faq-question:hover {
+            background: var(--gray-100);
+        }
+        
+        .faq-answer {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: white;
+        }
+        
+        .faq-answer.active {
+            padding: 20px;
+            max-height: 500px;
+        }
+        
+        .faq-answer p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .faq-answer ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .faq-answer li {
+            margin-bottom: 8px;
+        }
+        
+        .faq-toggle {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .faq-item.active .faq-toggle {
+            transform: rotate(45deg);
+        }
+        
+        .contact-section {
+            background: var(--primary);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .contact-section h2 {
+            margin-bottom: 20px;
+        }
+        
+        .contact-section p {
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+        }
+        
+        .contact-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-white {
+            background: white;
+            color: var(--primary);
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-white:hover {
+            background: var(--gray-100);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <div class="logo">CT</div>
+                <span class="brand-name">CodeTantra Automation</span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#features">Features</a>
+                <a href="index.html#pricing">Pricing</a>
+                <a href="help.html" class="active">Help</a>
+                <a href="how-to-use.html">How to Use</a>
+                <a href="login.html" class="btn btn-outline">Login</a>
+                <a href="signup.html" class="btn btn-primary">Sign Up</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="help-container">
+        <div class="help-header">
+            <h1>Help Center</h1>
+            <p>Find answers to common questions and get support for CodeTantra Automation</p>
+        </div>
+
+        <div class="help-search">
+            <input type="text" class="search-box" placeholder="Search for help topics..." id="searchBox">
+        </div>
+
+        <!-- Installation FAQ -->
+        <div class="faq-section">
+            <h2>Installation & Setup</h2>
+            
+            <div class="faq-item">
+                <button class="faq-question">
+                    How do I install CodeTantra Automation?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>To install CodeTantra Automation:</p>
+                    <ol>
+                        <li>Download the zip file from our website</li>
+                        <li>Extract it to any folder on your computer</li>
+                        <li>Double-click on install.bat to run the installer</li>
+                        <li>Wait for the installation to complete</li>
+                        <li>Run run.bat to start the application</li>
+                    </ol>
+                    <p>The installer will automatically check for Python, install required packages, and set up browser drivers.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    What are the system requirements?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>CodeTantra Automation requires:</p>
+                    <ul>
+                        <li>Windows 10 or Windows 11</li>
+                        <li>Python 3.8 or higher</li>
+                        <li>Internet connection for API calls and browser installation</li>
+                        <li>Administrator rights for browser installation</li>
+                        <li>At least 2GB of free disk space</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    I get "Python not found" error. What should I do?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>If you see a "Python not found" error:</p>
+                    <ol>
+                        <li>Download Python 3.8+ from python.org</li>
+                        <li>During installation, make sure to check "Add Python to PATH"</li>
+                        <li>Restart your computer after installation</li>
+                        <li>Run the installer again</li>
+                    </ol>
+                    <p>If the problem persists, try running the installer as Administrator.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    How do I configure my CodeTantra accounts?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>To configure your accounts:</p>
+                    <ol>
+                        <li>Navigate to the desktop-app folder</li>
+                        <li>Copy credentials_template.py to credentials.py</li>
+                        <li>Open credentials.py in a text editor</li>
+                        <li>Fill in your CodeTantra account details</li>
+                        <li>Save the file and restart the application</li>
+                    </ol>
+                    <p>Make sure to use the correct login URL for your institution's CodeTantra platform.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage FAQ -->
+        <div class="faq-section">
+            <h2>Using the Application</h2>
+            
+            <div class="faq-item">
+                <button class="faq-question">
+                    How do I ensure both accounts are on the same question?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>This is the most critical step for successful automation:</p>
+                    <ol>
+                        <li>Open your answers account in a web browser</li>
+                        <li>Navigate to the specific question you want to solve</li>
+                        <li>Open your target account in another browser tab</li>
+                        <li>Navigate to the EXACT SAME QUESTION in the target account</li>
+                        <li>Verify both accounts show the same question number and content</li>
+                        <li>Only then start the automation</li>
+                    </ol>
+                    <p>The application will check if both accounts are synchronized before proceeding.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    What types of questions does the automation support?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>CodeTantra Automation supports:</p>
+                    <ul>
+                        <li>Code completion problems (Type 1 and Type 2)</li>
+                        <li>Multiple choice questions</li>
+                        <li>Fill-in-the-blank questions</li>
+                        <li>Various programming languages (Java, C++, C, Python, JavaScript)</li>
+                    </ul>
+                    <p>The application automatically detects the question type and applies the appropriate solution method.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    How does the credit system work?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>Our credit system works as follows:</p>
+                    <ul>
+                        <li>Code completion questions: 5 credits each</li>
+                        <li>Other question types: 3 credits each</li>
+                        <li>Failed problems: 1 credit (still charged)</li>
+                        <li>Free credits: 80 credits on signup</li>
+                        <li>Referral bonus: 70 credits per successful referral</li>
+                    </ul>
+                    <p>Credits are deducted in real-time as problems are processed.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    The application says "Questions not synced". What does this mean?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>This error means the application detected that your two accounts are not on the same question. To fix this:</p>
+                    <ol>
+                        <li>Check both browser tabs/windows</li>
+                        <li>Ensure both accounts are on the exact same question</li>
+                        <li>Refresh both pages if necessary</li>
+                        <li>Navigate to the same question number in both accounts</li>
+                        <li>Restart the automation</li>
+                    </ol>
+                    <p>The application will wait until both accounts are properly synchronized.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Troubleshooting FAQ -->
+        <div class="faq-section">
+            <h2>Troubleshooting</h2>
+            
+            <div class="faq-item">
+                <button class="faq-question">
+                    The application crashes or stops unexpectedly. What should I do?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>If the application crashes:</p>
+                    <ol>
+                        <li>Check the error logs in the application window</li>
+                        <li>Close other applications to free up system resources</li>
+                        <li>Restart the application</li>
+                        <li>Ensure both CodeTantra accounts are still logged in</li>
+                        <li>Check your internet connection</li>
+                        <li>If the problem persists, contact support with the error details</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    Browser installation failed. How can I fix this?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>If browser installation fails:</p>
+                    <ol>
+                        <li>Run the installer as Administrator</li>
+                        <li>Check your internet connection</li>
+                        <li>Disable antivirus temporarily during installation</li>
+                        <li>Try manual installation: python -m playwright install firefox</li>
+                        <li>Restart your computer and try again</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    I can't login to my CodeTantra accounts. What's wrong?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>If login fails:</p>
+                    <ol>
+                        <li>Verify your credentials in credentials.py</li>
+                        <li>Test login manually in your web browser</li>
+                        <li>Check if your accounts are not locked or suspended</li>
+                        <li>Ensure you're using the correct login URL</li>
+                        <li>Update credentials if they have changed</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    The typing is very slow or not working properly. How can I fix this?
+                    <span class="faq-toggle">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>If typing issues occur:</p>
+                    <ol>
+                        <li>Close unnecessary applications to free up system resources</li>
+                        <li>Check if the CodeMirror editor is properly focused</li>
+                        <li>Ensure the browser window is not minimized</li>
+                        <li>Restart the application</li>
+                        <li>Check for any browser extensions that might interfere</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Section -->
+        <div class="contact-section">
+            <h2>Still Need Help?</h2>
+            <p>If you can't find the answer to your question, our support team is here to help.</p>
+            <div class="contact-buttons">
+                <a href="mailto:support@codetantra-automation.com" class="btn-white">Email Support</a>
+                <a href="how-to-use.html" class="btn-white">Detailed Guide</a>
+                <a href="login.html" class="btn-white">Access Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // FAQ Toggle Functionality
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const faqItem = question.parentElement;
+                const answer = faqItem.querySelector('.faq-answer');
+                const toggle = question.querySelector('.faq-toggle');
+                
+                // Close other open FAQs
+                document.querySelectorAll('.faq-item').forEach(item => {
+                    if (item !== faqItem) {
+                        item.classList.remove('active');
+                        item.querySelector('.faq-answer').classList.remove('active');
+                    }
+                });
+                
+                // Toggle current FAQ
+                faqItem.classList.toggle('active');
+                answer.classList.toggle('active');
+            });
+        });
+
+        // Search Functionality
+        document.getElementById('searchBox').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const faqItems = document.querySelectorAll('.faq-item');
+            
+            faqItems.forEach(item => {
+                const question = item.querySelector('.faq-question').textContent.toLowerCase();
+                const answer = item.querySelector('.faq-answer').textContent.toLowerCase();
+                
+                if (question.includes(searchTerm) || answer.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

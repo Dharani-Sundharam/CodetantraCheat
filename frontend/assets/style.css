@@ -24,7 +24,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
     line-height: 1.6;
     color: var(--gray-800);
     background: var(--gray-50);
@@ -97,6 +97,11 @@ body {
 
 .nav-links a:hover {
     color: var(--primary);
+}
+
+.nav-links a.active {
+    color: var(--primary);
+    font-weight: bold;
 }
 
 .user-email {
