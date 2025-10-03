@@ -189,10 +189,10 @@ class CodeTantraPlaywrightAutomation:
 
         # Create first browser (answers - left half)
         self.browser_answers = await self.playwright.firefox.launch(headless=False)
-        context_answers = await self.browser_answers.new_context(
+        self.context_answers = await self.browser_answers.new_context(
             viewport={'width': half_width, 'height': window_height}
         )
-        self.page_answers = await context_answers.new_page()
+        self.page_answers = await self.context_answers.new_page()
         
         # Position and resize using JavaScript
         await self.page_answers.evaluate(f"""
@@ -207,10 +207,10 @@ class CodeTantraPlaywrightAutomation:
 
         # Create second browser (target - right half)
         self.browser_target = await self.playwright.firefox.launch(headless=False)
-        context_target = await self.browser_target.new_context(
+        self.context_target = await self.browser_target.new_context(
             viewport={'width': half_width, 'height': window_height}
         )
-        self.page_target = await context_target.new_page()
+        self.page_target = await self.context_target.new_page()
         
         # Position and resize using JavaScript
         await self.page_target.evaluate(f"""
@@ -1072,9 +1072,47 @@ class CodeTantraPlaywrightAutomation:
             print("="*60)
     
     async def cleanup(self):
-        """Keep browsers open"""
-        print("\nKeeping browsers open...")
-        print("✓ Browsers will remain open for manual use")
+        """Properly close browsers and contexts to avoid asyncio warnings"""
+        try:
+            print("\nCleaning up browser resources...")
+            
+            # Close pages first
+            if hasattr(self, 'page_answers') and self.page_answers:
+                print("✓ Closing answers page...")
+                await self.page_answers.close()
+                self.page_answers = None
+            
+            if hasattr(self, 'page_target') and self.page_target:
+                print("✓ Closing target page...")
+                await self.page_target.close()
+                self.page_target = None
+            
+            # Close contexts
+            if hasattr(self, 'context_answers') and self.context_answers:
+                print("✓ Closing answers context...")
+                await self.context_answers.close()
+                self.context_answers = None
+            
+            if hasattr(self, 'context_target') and self.context_target:
+                print("✓ Closing target context...")
+                await self.context_target.close()
+                self.context_target = None
+            
+            # Close browsers
+            if hasattr(self, 'browser_answers') and self.browser_answers:
+                print("✓ Closing answers browser...")
+                await self.browser_answers.close()
+                self.browser_answers = None
+            
+            if hasattr(self, 'browser_target') and self.browser_target:
+                print("✓ Closing target browser...")
+                await self.browser_target.close()
+                self.browser_target = None
+            
+            print("✓ All browser resources cleaned up")
+            
+        except Exception as e:
+            print(f"⚠ Error during cleanup: {e}")
 
 
 async def main():

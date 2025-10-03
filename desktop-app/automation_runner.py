@@ -88,44 +88,49 @@ class AutomationRunner:
                     async with async_playwright() as playwright:
                         automation.playwright = playwright
                         
-                        # Setup browsers
-                        await automation.setup_browsers()
-                        
-                        # Navigate to CodeTantra
-                        await automation.navigate_to_codetantra(self.config['url'])
-                        
-                        # Login to both accounts
-                        await automation.login_to_account(
-                            automation.page_answers,
-                            self.config['answers_email'],
-                            self.config['answers_password'],
-                            "Answers Account"
-                        )
-                        
-                        await automation.login_to_account(
-                            automation.page_target,
-                            self.config['target_email'],
-                            self.config['target_password'],
-                            "Target Account"
-                        )
-                        
-                        # Run automation normally
-                        num_problems = int(self.config.get('num_problems', 10))
-                        await automation.run_automation(num_problems=num_problems)
-                        
-                        # Update counters from automation
-                        self.problems_solved = automation.problems_solved
-                        self.problems_failed = automation.problems_failed
-                        self.problems_skipped = automation.problems_skipped
-                        
-                        # Get problem type tracking
-                        self.code_problems_solved = automation.code_problems_solved
-                        self.mcq_problems_solved = automation.mcq_problems_solved
-                        self.code_problems_failed = automation.code_problems_failed
-                        self.mcq_problems_failed = automation.mcq_problems_failed
-                        
-                        # Calculate and deduct credits after completion
-                        self.deduct_credits_after_completion()
+                        try:
+                            # Setup browsers
+                            await automation.setup_browsers()
+                            
+                            # Navigate to CodeTantra
+                            await automation.navigate_to_codetantra(self.config['url'])
+                            
+                            # Login to both accounts
+                            await automation.login_to_account(
+                                automation.page_answers,
+                                self.config['answers_email'],
+                                self.config['answers_password'],
+                                "Answers Account"
+                            )
+                            
+                            await automation.login_to_account(
+                                automation.page_target,
+                                self.config['target_email'],
+                                self.config['target_password'],
+                                "Target Account"
+                            )
+                            
+                            # Run automation normally
+                            num_problems = int(self.config.get('num_problems', 10))
+                            await automation.run_automation(num_problems=num_problems)
+                            
+                            # Update counters from automation
+                            self.problems_solved = automation.problems_solved
+                            self.problems_failed = automation.problems_failed
+                            self.problems_skipped = automation.problems_skipped
+                            
+                            # Get problem type tracking
+                            self.code_problems_solved = automation.code_problems_solved
+                            self.mcq_problems_solved = automation.mcq_problems_solved
+                            self.code_problems_failed = automation.code_problems_failed
+                            self.mcq_problems_failed = automation.mcq_problems_failed
+                            
+                            # Calculate and deduct credits after completion
+                            self.deduct_credits_after_completion()
+                            
+                        finally:
+                            # Ensure cleanup happens even if automation fails
+                            await automation.cleanup()
                 
                 # Execute the automation
                 asyncio.run(run_automation())
@@ -440,43 +445,48 @@ TARGET_ACCOUNT = {{
                     async with async_playwright() as playwright:
                         automation.playwright = playwright
                         
-                        # Setup browsers
-                        await automation.setup_browsers()
-                        
-                        # Navigate to CodeTantra
-                        await automation.navigate_to_codetantra(self.config['url'])
-                        
-                        # Login to both accounts
-                        await automation.login_to_account(
-                            automation.page_answers,
-                            self.config['answers_email'],
-                            self.config['answers_password'],
-                            "Answers Account"
-                        )
-                        
-                        await automation.login_to_account(
-                            automation.page_target,
-                            self.config['target_email'],
-                            self.config['target_password'],
-                            "Target Account"
-                        )
-                        
-                        # Run endless mode
-                        await automation.run_automation(num_problems=999999, endless_mode=True)
-                        
-                        # Update counters from automation
-                        self.problems_solved = automation.problems_solved
-                        self.problems_failed = automation.problems_failed
-                        self.problems_skipped = automation.problems_skipped
-                        
-                        # Get problem type tracking
-                        self.code_problems_solved = automation.code_problems_solved
-                        self.mcq_problems_solved = automation.mcq_problems_solved
-                        self.code_problems_failed = automation.code_problems_failed
-                        self.mcq_problems_failed = automation.mcq_problems_failed
-                        
-                        # Calculate and deduct credits after completion
-                        self.deduct_credits_after_completion()
+                        try:
+                            # Setup browsers
+                            await automation.setup_browsers()
+                            
+                            # Navigate to CodeTantra
+                            await automation.navigate_to_codetantra(self.config['url'])
+                            
+                            # Login to both accounts
+                            await automation.login_to_account(
+                                automation.page_answers,
+                                self.config['answers_email'],
+                                self.config['answers_password'],
+                                "Answers Account"
+                            )
+                            
+                            await automation.login_to_account(
+                                automation.page_target,
+                                self.config['target_email'],
+                                self.config['target_password'],
+                                "Target Account"
+                            )
+                            
+                            # Run endless mode
+                            await automation.run_automation(num_problems=999999, endless_mode=True)
+                            
+                            # Update counters from automation
+                            self.problems_solved = automation.problems_solved
+                            self.problems_failed = automation.problems_failed
+                            self.problems_skipped = automation.problems_skipped
+                            
+                            # Get problem type tracking
+                            self.code_problems_solved = automation.code_problems_solved
+                            self.mcq_problems_solved = automation.mcq_problems_solved
+                            self.code_problems_failed = automation.code_problems_failed
+                            self.mcq_problems_failed = automation.mcq_problems_failed
+                            
+                            # Calculate and deduct credits after completion
+                            self.deduct_credits_after_completion()
+                            
+                        finally:
+                            # Ensure cleanup happens even if automation fails
+                            await automation.cleanup()
                 
                 # Execute the endless automation
                 asyncio.run(run_endless_automation())

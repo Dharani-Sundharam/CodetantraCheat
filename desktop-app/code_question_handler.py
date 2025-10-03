@@ -4,6 +4,7 @@ Handles different types of code completion questions with smart strategies
 """
 
 import asyncio
+import pyperclip
 from comment_remover import CommentRemover
 
 
@@ -33,44 +34,6 @@ class CodeQuestionHandler:
         except Exception as e:
             print(f"  ⚠ Could not maximize/zoom window: {e}")
     
-    async def scroll_through_editor_iframe(self, iframe):
-        """Scroll through the entire editor in iframe to ensure all lines are loaded"""
-        try:
-            print("  Scrolling through iframe editor to load all lines...")
-            
-            # Scroll within the iframe
-            await iframe.evaluate("""
-                () => {
-                    // Scroll to top
-                    window.scrollTo(0, 0);
-                    
-                    // Find the CodeMirror editor
-                    const editor = document.querySelector('div.cm-content[contenteditable="true"]');
-                    if (editor) {
-                        // Scroll the editor container
-                        const scrollContainer = editor.closest('.cm-editor') || editor.parentElement;
-                        if (scrollContainer) {
-                            scrollContainer.scrollTop = 0;
-                            
-                            // Scroll to bottom to load all content
-                            setTimeout(() => {
-                                scrollContainer.scrollTop = scrollContainer.scrollHeight;
-                            }, 100);
-                            
-                            // Scroll back to top
-                            setTimeout(() => {
-                                scrollContainer.scrollTop = 0;
-                            }, 300);
-                        }
-                    }
-                }
-            """)
-            
-            await self.page_answers.wait_for_timeout(800)  # Wait for scrolling to complete
-            print("  ✓ Scrolled through iframe editor")
-                
-        except Exception as e:
-            print(f"  ⚠ Could not scroll through iframe editor: {e}")
     
     def detect_code_language(self, code):
         """Detect programming language from code content"""
@@ -102,28 +65,24 @@ class CodeQuestionHandler:
     async def detect_code_completion_type(self):
         """Detect if code completion is Type 1 (fully editable) or Type 2 (has static lines)"""
         try:
-            print("🔍 Detecting code completion type using RESET method...")
+            print("🔍 Detecting code completion type...")
             
             iframe_target = self.page_target.frame_locator("#course-iframe")
             
             # Step 1: Find and click RESET button
-            print("  Looking for RESET button in target account...")
             reset_button = iframe_target.get_by_role("button", name="RESET")
             
             try:
                 await reset_button.wait_for(state="visible", timeout=5000)
-                print("  ✓ RESET button found")
-            except Exception as e:
-                print(f"  ⚠ RESET button not found - assuming Type 1")
+            except Exception:
+                print("  ⚠ RESET button not found - assuming Type 1")
                 return {"type": "type1", "static_lines": []}
             
             # Step 2: Click RESET
-            print("  Clicking RESET button...")
             await reset_button.click()
             await self.page_target.wait_for_timeout(2000)
             
             # Step 3: Try to clear all code
-            print("  Attempting to clear all code...")
             editor = iframe_target.locator("div.cm-content[contenteditable='true']")
             await editor.click()
             await self.page_target.wait_for_timeout(500)
@@ -135,7 +94,6 @@ class CodeQuestionHandler:
             await self.page_target.wait_for_timeout(1000)
             
             # Step 4: Check remaining content (static lines)
-            print("  Checking for static lines...")
             lines = iframe_target.locator("div.cm-line")
             line_count = await lines.count()
             
@@ -159,8 +117,6 @@ class CodeQuestionHandler:
                 return {"type": "type1", "static_lines": []}
             else:
                 print(f"  ✓ TYPE 2: Has {len(static_lines)} static lines")
-                for sl in static_lines:
-                    print(f"    Static line {sl['line_number']}: {repr(sl['stripped'])}")
                 return {"type": "type2", "static_lines": static_lines}
             
         except Exception as e:
@@ -168,9 +124,9 @@ class CodeQuestionHandler:
             return {"type": "type1", "static_lines": []}
     
     async def extract_all_lines_from_answers(self):
-        """Extract all lines from answers account with structure"""
+        """Extract all lines from answers account using Ctrl+A + Ctrl+C method"""
         try:
-            print("Extracting structured lines from answers account...")
+            print("📋 Extracting structured lines from answers account...")
             
             # First, maximize and zoom the answers page for better code visibility
             await self.maximize_and_zoom_browser(self.page_answers, zoom_level=0.5)
@@ -180,105 +136,183 @@ class CodeQuestionHandler:
             await editor.wait_for(state="visible", timeout=10000)
             await editor.scroll_into_view_if_needed()
             
-            # Scroll to top to ensure we get all lines
-            await self.page_answers.evaluate("window.scrollTo(0, 0)")
-            await self.page_answers.wait_for_timeout(500)
+            # Use the same Ctrl+A + Ctrl+C method as get_code_from_answers
+            success = False
             
-            # Scroll through the entire editor to ensure all lines are loaded
-            await self.scroll_through_editor_iframe(iframe)
+            # Approach 1: Try JavaScript focus first
+            try:
+                await editor.evaluate("element => element.focus()")
+                success = True
+            except Exception:
+                pass
             
-            lines = iframe.locator("div.cm-line")
-            line_count = await lines.count()
-            
-            if line_count == 0:
-                print("⚠ No code lines found in answers editor")
-                return None
-            
-            structured_lines = []
-            for i in range(line_count):
+            # Approach 2: If JavaScript failed, try clicking
+            if not success:
                 try:
-                    line = lines.nth(i)
-                    line_text = await line.text_content()
-                    if line_text is None:
-                        line_text = ""
-                    
-                    structured_lines.append({
-                        'line_number': i,
-                        'text': line_text,
-                        'stripped': line_text.strip()
-                    })
-                except Exception as line_error:
-                    print(f"⚠ Error extracting line {i}: {line_error}")
-                    structured_lines.append({
-                        'line_number': i,
-                        'text': "",
-                        'stripped': ""
-                    })
+                    await editor.click(timeout=5000)
+                    success = True
+                except Exception:
+                    pass
             
-            print(f"✓ Extracted {len(structured_lines)} structured lines from answers")
-            return structured_lines
+            # Approach 3: If both failed, try clicking on the iframe first
+            if not success:
+                try:
+                    iframe_element = self.page_answers.locator("#course-iframe")
+                    await iframe_element.click()
+                    await self.page_answers.wait_for_timeout(200)
+                    await editor.click(timeout=3000)
+                    success = True
+                except Exception:
+                    pass
+            
+            # Wait a moment for focus
+            await self.page_answers.wait_for_timeout(300)
+            
+            # Try to select all text
+            try:
+                if success:
+                    await editor.press("Control+a")
+                else:
+                    await self.page_answers.keyboard.press("Control+a")
+            except Exception:
+                await self.page_answers.keyboard.press("Control+a")
+            
+            # Wait a moment for selection
+            await self.page_answers.wait_for_timeout(200)
+            
+            # Try to copy
+            try:
+                if success:
+                    await editor.press("Control+c")
+                else:
+                    await self.page_answers.keyboard.press("Control+c")
+            except Exception:
+                await self.page_answers.keyboard.press("Control+c")
+            
+            # Wait a moment for clipboard operation
+            await self.page_answers.wait_for_timeout(300)
+            
+            # Get the copied content from clipboard
+            try:
+                copied_content = pyperclip.paste()
+                
+                if copied_content and copied_content.strip():
+                    # Convert to structured lines format
+                    lines = copied_content.split('\n')
+                    structured_lines = []
+                    
+                    for i, line_text in enumerate(lines):
+                        structured_lines.append({
+                            'line_number': i,
+                            'text': line_text,
+                            'stripped': line_text.strip()
+                        })
+                    
+                    print(f"✓ Extracted {len(structured_lines)} structured lines")
+                    return structured_lines
+                else:
+                    print("⚠ No content found in clipboard")
+                    return None
+                    
+            except Exception as e:
+                print(f"⚠ Error reading from clipboard: {e}")
+                return None
             
         except Exception as e:
             print(f"⚠ Could not extract structured lines: {e}")
-            import traceback
-            traceback.print_exc()
             return None
     
     async def get_code_from_answers(self):
-        """Extract code from the answers account editor with enhanced error handling"""
+        """Extract code from the answers account editor using Ctrl+A + Ctrl+C method"""
         try:
-            print("Extracting code from answers account...")
+            print("📋 Extracting code from answers account...")
             
             # Switch to iframe first
             iframe = self.page_answers.frame_locator("#course-iframe")
             
-            # Find the CodeMirror editor content with better waiting
+            # Find the CodeMirror editor content
             editor = iframe.locator("div.cm-content[contenteditable='true']")
             await editor.wait_for(state="visible", timeout=10000)
-            
-            # Scroll to editor to ensure it's visible
             await editor.scroll_into_view_if_needed()
             
-            # Get all lines with better error handling
-            lines = iframe.locator("div.cm-line")
-            line_count = await lines.count()
+            # Try multiple approaches to focus and copy
+            success = False
             
-            if line_count == 0:
-                print("⚠ No code lines found in editor")
-                return None
+            # Approach 1: Try JavaScript focus first
+            try:
+                await editor.evaluate("element => element.focus()")
+                success = True
+            except Exception:
+                pass
             
-            code_text = []
-            for i in range(line_count):
+            # Approach 2: If JavaScript failed, try clicking
+            if not success:
                 try:
-                    line = lines.nth(i)
-                    line_text = await line.text_content()
-                    if line_text is None:
-                        line_text = ""
-                    code_text.append(line_text)
-                except Exception as line_error:
-                    print(f"⚠ Error extracting line {i}: {line_error}")
-                    code_text.append("")  # Add empty line to maintain structure
+                    await editor.click(timeout=5000)
+                    success = True
+                except Exception:
+                    pass
             
-            full_code = "\n".join(code_text)
+            # Approach 3: If both failed, try clicking on the iframe first
+            if not success:
+                try:
+                    iframe_element = self.page_answers.locator("#course-iframe")
+                    await iframe_element.click()
+                    await self.page_answers.wait_for_timeout(200)
+                    await editor.click(timeout=3000)
+                    success = True
+                except Exception:
+                    pass
             
-            # Clean up the code (remove extra whitespace but preserve structure)
-            cleaned_code = "\n".join(line.rstrip() for line in full_code.split('\n'))
+            # Wait a moment for focus
+            await self.page_answers.wait_for_timeout(300)
             
-            print(f"✓ Extracted {len(code_text)} lines of code")
-            print(f"✓ Code preview: {cleaned_code[:100]}{'...' if len(cleaned_code) > 100 else ''}")
-            return cleaned_code
+            # Try to select all text
+            try:
+                if success:
+                    await editor.press("Control+a")
+                else:
+                    await self.page_answers.keyboard.press("Control+a")
+            except Exception:
+                await self.page_answers.keyboard.press("Control+a")
+            
+            # Wait a moment for selection
+            await self.page_answers.wait_for_timeout(200)
+            
+            # Try to copy
+            try:
+                if success:
+                    await editor.press("Control+c")
+                else:
+                    await self.page_answers.keyboard.press("Control+c")
+            except Exception:
+                await self.page_answers.keyboard.press("Control+c")
+            
+            # Wait a moment for clipboard operation
+            await self.page_answers.wait_for_timeout(300)
+            
+            # Get the copied content from clipboard
+            try:
+                copied_content = pyperclip.paste()
+                
+                if copied_content and copied_content.strip():
+                    print(f"✓ Code extracted ({len(copied_content.split(chr(10)))} lines)")
+                    return copied_content
+                else:
+                    print("⚠ No content found in clipboard")
+                    return None
+                    
+            except Exception as e:
+                print(f"⚠ Error reading from clipboard: {e}")
+                return None
             
         except Exception as e:
             print(f"⚠ Could not extract code: {e}")
-            import traceback
-            traceback.print_exc()
             return None
     
     def detect_multiline_comment_strategy(self, answers_lines, static_lines):
         """Detect if static lines are commented with /* ... */ in answers"""
         try:
-            print("🔍 Detecting comment strategy...")
-            
             # Build full code from answers
             full_code = "\n".join(line['text'] for line in answers_lines)
             
@@ -287,7 +321,6 @@ class CodeQuestionHandler:
             has_multiline_end = '*/' in full_code
             
             if not (has_multiline_start and has_multiline_end):
-                print("  ✓ No multiline comments detected - using Strategy A")
                 return "strategy_a"
             
             # Check if static lines are inside comments
@@ -315,21 +348,16 @@ class CodeQuestionHandler:
             
             # If most static lines are commented, use Strategy B
             if commented_static_count >= len(static_lines) * 0.7:  # 70% threshold
-                print(f"  ✓ {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy B")
                 return "strategy_b"
             else:
-                print(f"  ✓ Only {commented_static_count}/{len(static_lines)} static lines are commented - using Strategy A")
                 return "strategy_a"
             
         except Exception as e:
-            print(f"⚠ Error detecting strategy: {e}")
             return "strategy_a"
     
     def compare_and_find_extra_code(self, answers_lines, static_lines):
         """Compare answers and static lines to find extra code"""
         try:
-            print("📊 Comparing lines to find extra code...")
-            
             static_texts = [sl['stripped'] for sl in static_lines]
             extra_code = []
             
@@ -354,13 +382,10 @@ class CodeQuestionHandler:
                 # If not static, it's extra code
                 if not is_static:
                     extra_code.append(ans_line)
-                    print(f"  Extra code line {ans_line['line_number']}: {repr(text)}")
             
-            print(f"✓ Found {len(extra_code)} extra code lines")
             return extra_code
             
         except Exception as e:
-            print(f"⚠ Error comparing lines: {e}")
             return []
     
     async def type_code_safely(self, editor, text, delay=10):
@@ -394,7 +419,7 @@ class CodeQuestionHandler:
     async def paste_code_to_target(self, code):
         """Paste code into the target account editor with enhanced reliability"""
         try:
-            print("Pasting code to target account...")
+            print("📝 Pasting code to target account...")
             
             if not code or not code.strip():
                 print("⚠ No code to paste")
@@ -402,14 +427,12 @@ class CodeQuestionHandler:
             
             # Detect language and clean the code using comment remover
             detected_lang = self.detect_code_language(code)
-            print(f"  Detected language: {detected_lang}")
-            print("  Cleaning code using comment remover...")
+            print(f"  Language: {detected_lang} | Cleaning code...")
             try:
                 cleaned_code = self.comment_remover.remove_comments(code, detected_lang)
-                print(f"  ✓ Code cleaned - removed comments")
                 code = cleaned_code
             except Exception as e:
-                print(f"  ⚠ Comment removal failed: {e}, using original code")
+                print(f"  ⚠ Comment removal failed: {e}")
             
             # First, maximize and zoom the target page for better code visibility
             await self.maximize_and_zoom_browser(self.page_target, zoom_level=0.6)
@@ -420,8 +443,6 @@ class CodeQuestionHandler:
             # Find the CodeMirror editor with better waiting
             editor = iframe.locator("div.cm-content[contenteditable='true']")
             await editor.wait_for(state="visible", timeout=10000)
-            
-            # Scroll to editor to ensure it's visible
             await editor.scroll_into_view_if_needed()
             
             # Click to focus the editor
@@ -429,7 +450,6 @@ class CodeQuestionHandler:
             await self.page_target.wait_for_timeout(500)
             
             # Clear existing content more reliably
-            print("  Clearing existing content...")
             await editor.press("Control+a")
             await self.page_target.wait_for_timeout(300)
             await editor.press("Delete")
@@ -437,7 +457,6 @@ class CodeQuestionHandler:
             
             # Method 1: Try using clipboard (Ctrl+V) first
             try:
-                print("  Attempting clipboard paste...")
                 # Set clipboard content using JavaScript with proper escaping
                 await self.page_target.evaluate("""
                     (code) => {
@@ -456,39 +475,31 @@ class CodeQuestionHandler:
                 # Verify paste was successful
                 pasted_content = await editor.text_content()
                 if pasted_content and len(pasted_content.strip()) > 0:
-                    print("✓ Code pasted successfully via clipboard")
+                    print("✓ Code pasted via clipboard")
                     return True
                 else:
                     print("⚠ Clipboard paste failed, trying line-by-line...")
                     
-            except Exception as clipboard_error:
-                print(f"⚠ Clipboard paste failed: {clipboard_error}")
-                print("  Trying line-by-line method...")
+            except Exception:
+                print("⚠ Clipboard paste failed, trying line-by-line...")
             
             # Method 2: Line-by-line typing with better error handling
-            print("  Pasting line by line with improved error handling...")
             lines = code.split('\n')
-            print(f"  Total lines to type: {len(lines)}")
+            print(f"  Typing {len(lines)} lines...")
             
             for i, line in enumerate(lines):
                 if line.strip():
-                    print(f"  Typing line {i+1}/{len(lines)}: {line[:50]}{'...' if len(line) > 50 else ''}")
                     try:
                         # Use the safer typing method
                         await self.type_code_safely(editor, line, delay=20)
-                        print(f"  ✓ Line {i+1} typed successfully")
-                    except Exception as e:
-                        print(f"  ⚠ Error typing line {i+1}: {e}")
+                    except Exception:
                         # Try simple typing as fallback
                         try:
-                            print(f"  Retrying line {i+1} with simple typing...")
                             await editor.type(line, delay=30)
-                            print(f"  ✓ Line {i+1} typed with fallback method")
-                        except Exception as e2:
-                            print(f"  ✗ Failed to type line {i+1}: {e2}")
+                        except Exception:
                             continue
                 else:
-                    print(f"  Skipping empty line {i+1}")
+                    pass
                 
                 # Add newline if not the last line
                 if i < len(lines) - 1:
@@ -503,7 +514,6 @@ class CodeQuestionHandler:
             
             if pasted_content and len(pasted_content.strip()) > 0:
                 print(f"✓ Code pasted successfully ({len(lines)} lines)")
-                print(f"✓ Paste verification: {pasted_content[:100]}{'...' if len(pasted_content) > 100 else ''}")
                 return True
             else:
                 print("⚠ Paste verification failed - no content detected")
@@ -560,23 +570,18 @@ class CodeQuestionHandler:
             editor = iframe_target.locator("div.cm-content[contenteditable='true']")
             
             # Step 1: Focus the editor and select all content
-            print("  Focusing editor and selecting all content...")
             await editor.click()
             await self.page_target.wait_for_timeout(500)
             
             # Select all existing content (static lines)
             await editor.press("Control+a")
             await self.page_target.wait_for_timeout(500)
-            print("  ✓ Selected all static lines")
             
             # Step 2: Comment everything using Ctrl+/
-            print("  Commenting all lines with Ctrl+/...")
             await editor.press("Control+/")
             await self.page_target.wait_for_timeout(800)
-            print("  ✓ All lines commented with //")
             
             # Step 3: Move to end and add 3 new lines
-            print("  Moving to end and adding 3 new lines...")
             await editor.press("Control+End")
             await self.page_target.wait_for_timeout(200)
             
@@ -587,10 +592,8 @@ class CodeQuestionHandler:
             await self.page_target.wait_for_timeout(100)
             await editor.press("Enter")
             await self.page_target.wait_for_timeout(100)
-            print("  ✓ Added 3 new lines for code placement")
             
             # Step 4: Build complete code from answers and clean it
-            print("  Building complete code from answers...")
             complete_code = "\n".join(line['text'] for line in answers_lines)
             
             if not complete_code.strip():
@@ -599,73 +602,55 @@ class CodeQuestionHandler:
             
             # Step 5: Detect language and clean the code using comment remover
             detected_lang = self.detect_code_language(complete_code)
-            print(f"  Detected language: {detected_lang}")
-            print("  Cleaning code using comment remover...")
+            print(f"  Language: {detected_lang} | Cleaning code...")
             try:
                 cleaned_code = self.comment_remover.remove_comments(complete_code, detected_lang)
-                print(f"  ✓ Code cleaned - removed comments")
             except Exception as e:
-                print(f"  ⚠ Comment removal failed: {e}, using original code")
+                print(f"  ⚠ Comment removal failed: {e}")
                 cleaned_code = complete_code
             
-            print(f"  Ready to type {len(cleaned_code.split(chr(10)))} lines of clean code")
-            
             # Step 6: Type cleaned code with better error handling
-            print("  Typing cleaned code...")
-            print(f"  Total lines to type: {len(cleaned_code.split(chr(10)))}")
             lines = cleaned_code.split('\n')
+            print(f"  Typing {len(lines)} lines...")
             
             for i, line in enumerate(lines):
                 if line.strip():
-                    print(f"  Typing line {i+1}/{len(lines)}: {line[:50]}{'...' if len(line) > 50 else ''}")
                     try:
                         # Type with moderate speed for reliability
                         await self.type_code_safely(editor, line, delay=10)
-                        print(f"  ✓ Line {i+1} typed successfully")
-                    except Exception as e:
-                        print(f"  ⚠ Error typing line {i+1}: {e}")
+                    except Exception:
                         # Try simple typing as fallback
                         try:
-                            print(f"  Retrying line {i+1} with simple typing...")
                             await editor.type(line, delay=20)
-                            print(f"  ✓ Line {i+1} typed with fallback method")
-                        except Exception as e2:
-                            print(f"  ✗ Failed to type line {i+1}: {e2}")
+                        except Exception:
                             continue
                 else:
-                    print(f"  Skipping empty line {i+1}")
+                    pass
                 
                 if i < len(lines) - 1:
                     await editor.press("Enter")
                     await self.page_target.wait_for_timeout(50)  # Slightly slower for reliability
-            print("  ✓ All code typed successfully")
             
             # Verify what was actually typed
             try:
                 actual_content = await editor.text_content()
-                print(f"  Verification: {len(actual_content)} characters typed")
                 if len(actual_content) < len(cleaned_code) * 0.8:  # If less than 80% of expected
                     print(f"  ⚠ Warning: Only {len(actual_content)} chars typed, expected ~{len(cleaned_code)}")
-                    print(f"  First 100 chars: {actual_content[:100]}")
                 else:
-                    print(f"  ✓ Verification passed: {len(actual_content)} characters")
-            except Exception as e:
-                print(f"  ⚠ Could not verify typed content: {e}")
+                    print(f"✓ Strategy B: Code typed successfully ({len(actual_content)} chars)")
+            except Exception:
+                print("✓ Strategy B: Code typed successfully")
             
-            print("✓ Strategy B: Code typed successfully")
             return True
             
         except Exception as e:
             print(f"✗ Strategy B failed: {e}")
-            import traceback
-            traceback.print_exc()
             return False
     
     async def handle_type2_code_completion(self):
         """Handle Type 2 code completion with smart strategies"""
         try:
             print("\n🎯 TYPE 2 CODE COMPLETION DETECTED")
-            print("="*60)
             
             # Step 1: Detect type and get static lines
             type_info = await self.detect_code_completion_type()
@@ -687,7 +672,6 @@ class CodeQuestionHandler:
                 return False
             
             # Step 3: Use Strategy B - Comment static lines then paste complete code
-            print("📝 Using Strategy B: Comment static lines + paste complete code")
             success = await self.paste_code_strategy_b(answers_lines, static_lines)
             
             if success:
@@ -699,8 +683,6 @@ class CodeQuestionHandler:
             
         except Exception as e:
             print(f"✗ Type 2 handling failed: {e}")
-            import traceback
-            traceback.print_exc()
             return False
     
     async def handle_code_completion_question(self):
@@ -732,6 +714,4 @@ class CodeQuestionHandler:
                     
         except Exception as e:
             print(f"⚠ Error handling code completion: {e}")
-            import traceback
-            traceback.print_exc()
             return False
