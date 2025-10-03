@@ -19,16 +19,16 @@ By using this application, you acknowledge and agree that:
 ## 🚀 Quick Start
 
 ### For Users:
-1. **Download** `install.bat` and `run.bat` files
-2. **Run** `install.bat` to clone repository and install dependencies
-3. **Configure** your credentials in `CodeTantraAutomation/desktop-app/credentials.py` (copy from `credentials_template.py`)
+1. **Extract** the CodeTantra Automation zip file to a folder
+2. **Run** `install.bat` to install dependencies and browsers
+3. **Configure** your credentials in `desktop-app/credentials.py` (copy from `credentials_template.py`)
 4. **Run** `run.bat` to start the application
 5. **Accept** the disclaimer dialog to continue
 
 ### For Developers:
 1. **Clone** the repository: `git clone -b desktop-app <repository-url>`
 2. **Install** Python 3.8+ and dependencies: `pip install -r requirements.txt`
-3. **Configure** credentials in `credentials.py`
+3. **Configure** credentials in `desktop-app/credentials.py`
 4. **Run** the application: `python desktop-app/main.py`
 
 ## 📋 System Requirements
@@ -42,15 +42,14 @@ By using this application, you acknowledge and agree that:
 
 ### Automatic Installation (Recommended)
 ```bash
-# Run the installer (clones repo and installs everything)
+# Extract the zip file to a folder, then run:
 install.bat
 ```
 
 ### Manual Installation
 ```bash
-# Clone the repository
-git clone -b desktop-app <repository-url>
-cd CodeTantraAutomation
+# Extract the zip file to a folder
+# Navigate to the extracted folder
 
 # Install Python packages
 pip install -r requirements.txt
@@ -63,17 +62,17 @@ python -m playwright install firefox chromium webkit
 
 ### Starting the Application
 ```bash
-# Simple way (from parent directory)
+# Simple way (from extracted folder)
 run.bat
 
-# Or directly (from CodeTantraAutomation directory)
+# Or directly (from the extracted folder)
 python desktop-app/main.py
 ```
 
 ### Configuration
-1. **Copy** `CodeTantraAutomation/desktop-app/credentials_template.py` to `credentials.py`
-2. **Edit** `CodeTantraAutomation/desktop-app/credentials.py` with your CodeTantra credentials
-3. **Configure** `CodeTantraAutomation/desktop-app/config.py` for API settings
+1. **Copy** `desktop-app/credentials_template.py` to `desktop-app/credentials.py`
+2. **Edit** `desktop-app/credentials.py` with your CodeTantra credentials
+3. **Configure** `desktop-app/config.py` for API settings
 4. **Run** the application
 
 ## 🔒 Application Features
@@ -219,6 +218,26 @@ CREDIT_SYSTEM_ENABLED = True
 - **Disclaimer**: You must accept the educational use disclaimer to continue
 - **No Auto-Login**: Credentials are cleared by default for security
 - **Manual Setup**: Users must configure their own credentials
+
+## 📦 Distribution
+
+### Creating a Distribution Package
+1. **Zip the entire folder** containing all files
+2. **Include these files** in the zip:
+   - `desktop-app/` folder (all Python files)
+   - `install.bat`
+   - `run.bat` 
+   - `requirements.txt`
+   - `README.md`
+3. **Users extract and run** `install.bat` to set up
+
+### Distribution Checklist
+- ✅ All source code included
+- ✅ Batch files for easy setup
+- ✅ Requirements file for dependencies
+- ✅ Template credentials file
+- ✅ Clear installation instructions
+- ✅ Disclaimer and legal protection
 
 ## 🚨 Important Notes
 
