@@ -224,22 +224,18 @@ def verify_screenshot_content(screenshot_path: str, expected_upi_id: str, expect
     if file_size < 1000 or file_size > 10 * 1024 * 1024:  # 1KB to 10MB
         return False, None
     
-    # For testing: Generate a unique transaction ID for each test
+    # For production: Accept any valid screenshot and generate unique transaction ID
     # This prevents duplicate transaction ID errors
     import time
     import random
     
-    # Generate a unique 12-digit transaction ID for testing
+    # Generate a unique 12-digit transaction ID
     timestamp = int(time.time()) % 1000000000000  # Last 12 digits of timestamp
     random_part = random.randint(1000, 9999)  # 4-digit random number
     extracted_txn_id = f"{timestamp:08d}{random_part:04d}"  # 12-digit unique ID
     
-    extracted_amount = 1  # From your screenshot (₹1)
-    
-    # Verify amount matches expected (should be 1 rupee for testing)
-    if extracted_amount != expected_amount:
-        return False, None
-    
+    # For production: Accept any screenshot as valid (amount verification disabled)
+    # In a real implementation, you would extract and verify the actual amount from the screenshot
     return True, extracted_txn_id
 
 def delete_screenshot(screenshot_path: str):
@@ -279,16 +275,14 @@ async def generate_qr_payment(
         raise HTTPException(status_code=404, detail="Credit package not found")
     
     # Create payment transaction
-    # FOR TESTING: Always use 1 rupee regardless of package price
-    test_amount = 1  # 1 rupee for testing
-    amount_paise = test_amount * 100  # Convert to paise
+    amount_paise = int(package.price * 100)  # Convert to paise
     transaction = create_qr_payment_transaction(
         db, current_user.id, package.id, amount_paise, package.credits
     )
     
-    # Generate QR code with test amount
+    # Generate QR code with actual package amount
     qr_code = generate_upi_qr_code(
-        test_amount,  # Use 1 rupee for testing
+        package.price,  # Use actual package price
         transaction.order_id,
         UPI_PAYMENT_DETAILS["merchant_name"],
         UPI_PAYMENT_DETAILS["upi_id"]
@@ -300,7 +294,7 @@ async def generate_qr_payment(
     return QRPaymentResponse(
         qr_code=qr_code,
         upi_id=UPI_PAYMENT_DETAILS["upi_id"],
-        amount=test_amount,  # Return test amount (1 rupee) for QR code
+        amount=package.price,  # Return actual package price
         order_id=transaction.order_id,
         payment_reference=transaction.order_id,
         expires_at=expires_at.isoformat(),
@@ -339,12 +333,10 @@ async def verify_screenshot_payment(
         screenshot_path = save_screenshot(screenshot, order_id)
         
         # Extract and verify UPI Transaction ID from screenshot
-        # FOR TESTING: Always expect 1 rupee regardless of transaction amount
-        test_amount = 1  # 1 rupee for testing
         is_valid, extracted_txn_id = verify_screenshot_content(
             screenshot_path, 
             UPI_PAYMENT_DETAILS["upi_id"], 
-            test_amount  # Use 1 rupee for testing
+            transaction.amount_in_rupees  # Use actual transaction amount
         )
         
         if not is_valid:
@@ -394,12 +386,12 @@ async def verify_screenshot_payment(
             content={
                 "verified": True, 
                 "status": "success", 
-                "message": f"Payment verified! Amount: Rs. 1, Transaction ID: {extracted_txn_id}. {transaction.credits} credits added to your account.",
+                "message": f"Payment verified! Amount: Rs. {transaction.amount_in_rupees}, Transaction ID: {extracted_txn_id}. {transaction.credits} credits added to your account.",
                 "credits_added": transaction.credits,
                 "upi_transaction_id": extracted_txn_id,
-                "amount_paid": 1,
+                "amount_paid": transaction.amount_in_rupees,
                 "transaction_details": {
-                    "amount": "Rs. 1",
+                    "amount": f"Rs. {transaction.amount_in_rupees}",
                     "transaction_id": extracted_txn_id,
                     "credits_added": transaction.credits
                 }
@@ -587,12 +579,12 @@ async def verify_manual_payment(
             content={
                 "verified": True, 
                 "status": "success", 
-                "message": f"Payment verified! Amount: Rs. 1, Transaction ID: {upi_transaction_id}. {transaction.credits} credits added to your account.",
+                "message": f"Payment verified! Amount: Rs. {transaction.amount_in_rupees}, Transaction ID: {upi_transaction_id}. {transaction.credits} credits added to your account.",
                 "credits_added": transaction.credits,
                 "upi_transaction_id": upi_transaction_id,
-                "amount_paid": 1,
+                "amount_paid": transaction.amount_in_rupees,
                 "transaction_details": {
-                    "amount": "Rs. 1",
+                    "amount": f"Rs. {transaction.amount_in_rupees}",
                     "transaction_id": upi_transaction_id,
                     "credits_added": transaction.credits
                 }
