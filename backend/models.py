@@ -3,12 +3,13 @@ Database Models for CodeTantra Automation Service
 PostgreSQL + SQLAlchemy ORM (PostgreSQL ONLY)
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Text, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import secrets
 import re
+import enum
 
 Base = declarative_base()
 
@@ -84,4 +85,63 @@ class VerificationToken(Base):
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# Payment-related models
+class PaymentStatus(enum.Enum):
+    PENDING = "pending"
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
+
+
+class CreditPackage(Base):
+    __tablename__ = "credit_packages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    credits = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)  # Price in rupees
+    description = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PaymentTransaction(Base):
+    __tablename__ = "payment_transactions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    package_id = Column(Integer, ForeignKey("credit_packages.id"))
+    order_id = Column(String, unique=True, index=True, nullable=False)
+    paytm_txn_id = Column(String, nullable=True)  # UPI reference or transaction ID
+    paytm_txn_token = Column(String, nullable=True)
+    amount = Column(Integer, nullable=False)  # Amount in paise
+    credits = Column(Integer, nullable=False)
+    status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
+    paytm_response = Column(Text, nullable=True)  # JSON response from payment gateway
+    checksum_hash = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    
+    # Relationships
+    user = relationship("User")
+    package = relationship("CreditPackage")
+    
+    @property
+    def amount_in_rupees(self) -> float:
+        """Convert amount from paise to rupees"""
+        return self.amount / 100.0
+    
+    @property
+    def is_successful(self) -> bool:
+        """Check if payment was successful"""
+        return self.status == PaymentStatus.SUCCESS
+    
+    @property
+    def is_pending(self) -> bool:
+        """Check if payment is pending"""
+        return self.status == PaymentStatus.PENDING
 
