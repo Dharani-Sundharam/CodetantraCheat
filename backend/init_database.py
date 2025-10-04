@@ -15,7 +15,7 @@ def init_database():
     # Check if DATABASE_URL is set (PostgreSQL)
     postgres_url = os.getenv("DATABASE_URL")
     if not postgres_url:
-        print("No DATABASE_URL found - using development mode")
+        print("No DATABASE_URL found - skipping database initialization")
         return True
     
     # Convert to SQLAlchemy format
