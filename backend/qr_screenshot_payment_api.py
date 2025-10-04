@@ -191,22 +191,22 @@ def extract_upi_transaction_id_from_screenshot(screenshot_path: str) -> Optional
         # Use pytesseract to extract text
         text = pytesseract.image_to_string(rgb_image)
         
-    # Look for UPI Transaction ID patterns (12-digit numbers)
-    upi_txn_patterns = [
-        r'UPI transaction ID[:\s]+(\d{12})',  # UPI transaction ID label
-        r'UPI Transaction ID[:\s]+(\d{12})',  # UPI Transaction ID label (capital T)
-        r'Transaction ID[:\s]+(\d{12})',  # Transaction ID label
-        r'Txn ID[:\s]+(\d{12})',  # Txn ID label
-        r'(\d{12})',  # Any 12-digit number
-    ]
-    
-    for pattern in upi_txn_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            txn_id = matches[0].strip()
-            # Validate that it's a 12-digit number
-            if txn_id.isdigit() and len(txn_id) == 12:
-                return txn_id
+        # Look for UPI Transaction ID patterns (12-digit numbers)
+        upi_txn_patterns = [
+            r'UPI transaction ID[:\s]+(\d{12})',  # UPI transaction ID label
+            r'UPI Transaction ID[:\s]+(\d{12})',  # UPI Transaction ID label (capital T)
+            r'Transaction ID[:\s]+(\d{12})',  # Transaction ID label
+            r'Txn ID[:\s]+(\d{12})',  # Txn ID label
+            r'(\d{12})',  # Any 12-digit number
+        ]
+        
+        for pattern in upi_txn_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                txn_id = matches[0].strip()
+                # Validate that it's a 12-digit number
+                if txn_id.isdigit() and len(txn_id) == 12:
+                    return txn_id
         
         return None
         
