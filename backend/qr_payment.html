@@ -393,14 +393,21 @@
         // Load credit packages
         async function loadPackages() {
             try {
+                console.log('Loading packages from:', `${API_URL}/api/qr-payment/packages`);
                 const response = await fetch(`${API_URL}/api/qr-payment/packages`);
+                console.log('Packages response status:', response.status);
+                
                 if (response.ok) {
                     packages = await response.json();
+                    console.log('Packages loaded:', packages);
                     displayPackages();
                 } else {
-                    showError('Failed to load credit packages');
+                    const errorText = await response.text();
+                    console.error('Failed to load packages:', errorText);
+                    showError('Failed to load credit packages: ' + errorText);
                 }
             } catch (error) {
+                console.error('Error loading packages:', error);
                 showError('Error loading packages: ' + error.message);
             }
         }
@@ -428,6 +435,8 @@
 
         // Select package and auto-generate QR
         async function selectPackage(packageId) {
+            console.log('Selecting package:', packageId);
+            
             // Remove previous selection
             document.querySelectorAll('.package-card').forEach(card => {
                 card.classList.remove('selected');
@@ -438,6 +447,12 @@
             selectedCard.classList.add('selected');
             
             selectedPackage = packages.find(pkg => pkg.id === packageId);
+            console.log('Selected package:', selectedPackage);
+            
+            if (!selectedPackage) {
+                showError('Package not found');
+                return;
+            }
             
             // Auto-generate QR code
             await generateQrCode();
@@ -445,6 +460,8 @@
 
         // Generate QR code function
         async function generateQrCode() {
+            console.log('Generating QR code for package:', selectedPackage);
+            
             if (!selectedPackage) {
                 showError('Please select a credit package');
                 return;
@@ -459,15 +476,14 @@
             }
 
             const formData = {
-                package_id: selectedPackage.id,
-                username: '', // Not needed anymore
-                password: ''  // Not needed anymore
+                package_id: selectedPackage.id
             };
 
             try {
                 showLoading(true);
                 hideMessages();
 
+                console.log('Sending QR generation request:', formData);
                 const response = await fetch(`${API_URL}/api/qr-payment/generate`, {
                     method: 'POST',
                     headers: {
@@ -477,12 +493,14 @@
                     body: JSON.stringify(formData)
                 });
 
+                console.log('QR generation response status:', response.status);
                 const result = await response.json();
+                console.log('QR generation result:', result);
 
                 if (response.ok) {
                     // Display QR code
                     currentOrderId = result.order_id;
-                    document.getElementById('qrCodeImage').src = result.qr_code;
+                    document.getElementById('qrCodeImage').src = `data:image/png;base64,${result.qr_code}`;
                     document.getElementById('paymentAmount').textContent = result.amount;
                     document.getElementById('upiId').textContent = result.upi_id;
                     document.getElementById('orderId').textContent = result.order_id;
@@ -494,9 +512,11 @@
                     showSuccess('QR code generated! Scan with any UPI app to pay.');
                     
                 } else {
+                    console.error('QR generation failed:', result);
                     showError(result.detail || 'Failed to generate QR code');
                 }
             } catch (error) {
+                console.error('QR generation error:', error);
                 showError('Error: ' + error.message);
             } finally {
                 showLoading(false);
