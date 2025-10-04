@@ -328,7 +328,7 @@ async def verify_manual_payment(
                 content={
                     "verified": False, 
                     "status": "duplicate_transaction_id", 
-                    "message": "This transaction ID has already been used. Please use a different payment or contact support if you believe this is an error."
+                    "message": "This transaction ID is wrong. Please use a different payment or contact support if you believe this is an error."
                 }
             )
         
