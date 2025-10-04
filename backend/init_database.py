@@ -32,12 +32,12 @@ def init_database():
         Base.metadata.create_all(bind=engine)
         
         # Check if admin user exists
-        admin = session.query(User).filter(User.email == "admin@codetantra.local").first()
+        admin = session.query(User).filter(User.email == "admin@codetantra.ac.in").first()
         if not admin:
             print("Creating admin user...")
             admin_user = User(
                 name="Admin",
-                email="admin@codetantra.local",
+                email="admin@codetantra.ac.in",
                 college_name="System",
                 age=25,
                 password_hash=pwd_context.hash("admin123"),
