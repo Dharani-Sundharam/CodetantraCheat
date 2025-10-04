@@ -359,7 +359,7 @@
                 <!-- Screenshot Upload Form -->
                 <form id="screenshotForm" enctype="multipart/form-data" style="display: block;">
                     <div class="file-input-wrapper">
-                        <input type="file" id="screenshotFile" class="file-input" accept="image/*">
+                        <input type="file" id="screenshotFile" class="file-input" accept="image/*" required>
                         <label for="screenshotFile" class="file-input-label" id="fileLabel">
                             Click to upload payment screenshot
                         </label>
@@ -526,8 +526,8 @@
 
                 if (result.verified) {
                     showSuccess(`Payment successful! ${result.credits_added} credits have been added to your account.`);
-                    document.getElementById('verifyButton').disabled = true;
-                    document.getElementById('verifyButton').textContent = 'Payment Verified ✓';
+                    document.getElementById('verifyScreenshotButton').disabled = true;
+                    document.getElementById('verifyScreenshotButton').textContent = 'Payment Verified ✓';
                     
                     // Clear session storage
                     sessionStorage.removeItem('paymentData');
@@ -546,6 +546,7 @@
                     }
                 }
             } catch (error) {
+                console.error('Screenshot verification error:', error);
                 showError('Error verifying payment: ' + error.message);
             } finally {
                 showLoading(false);
@@ -564,7 +565,7 @@
             }
             
             if (!/^\d{12}$/.test(upiTransactionId)) {
-                showError('Please enter a valid 12-digit UPI Transaction ID');
+                showError('Please enter a valid 12-digit UPI Transaction ID (numbers only)');
                 return;
             }
 
@@ -618,6 +619,7 @@
                     }
                 }
             } catch (error) {
+                console.error('Manual verification error:', error);
                 showError('Error verifying payment: ' + error.message);
             } finally {
                 showLoading(false);
