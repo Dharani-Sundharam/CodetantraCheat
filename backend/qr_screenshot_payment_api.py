@@ -328,7 +328,7 @@ async def verify_manual_payment(
                 content={
                     "verified": False, 
                     "status": "duplicate_transaction_id", 
-                    "message": "This UPI Transaction ID is not valid or has already been used. Please check your payment confirmation and try again with a different transaction ID."
+                    "message": "This transaction ID has already been used. Please use a different payment or contact support if you believe this is an error."
                 }
             )
         

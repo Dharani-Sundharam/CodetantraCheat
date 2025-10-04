@@ -399,7 +399,7 @@
             const html = transactions.map(txn => `
                 <tr>
                     <td>${txn.id}</td>
-                    <td><span style="font-family: monospace; background: #374151; padding: 2px 6px; border-radius: 4px;">${txn.upi_transaction_id || 'N/A'}</span></td>
+                    <td><span class="upi-id">${txn.upi_transaction_id || 'N/A'}</span></td>
                     <td>${txn.user_email}</td>
                     <td>${txn.package_name}</td>
                     <td>₹${txn.amount}</td>
