@@ -331,18 +331,6 @@
         <div class="qr-payment-form">
             <form id="qrPaymentForm">
                 <div class="form-group">
-                    <label for="username">Email Address</label>
-                    <input type="email" id="username" name="username" required 
-                           placeholder="Enter your registered email">
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required 
-                           placeholder="Enter your password">
-                </div>
-
-                <div class="form-group">
                     <label>Select Credit Package</label>
                     <div class="package-grid" id="packageGrid">
                         <!-- Packages will be loaded here -->
@@ -375,19 +363,15 @@
                     <li>Enter the exact amount shown</li>
                     <li>Complete the payment</li>
                     <li>Take a screenshot of the payment confirmation</li>
-                    <li>Upload the screenshot below with UPI reference number</li>
+                    <li>Upload the screenshot below - the system will automatically verify your payment</li>
                 </ol>
             </div>
 
             <div class="verification-section" id="verificationSection">
                 <h3>Verify Payment</h3>
-                <p>After completing payment, upload your payment screenshot and enter UPI reference:</p>
+                <p>After completing payment, upload your payment screenshot. The system will automatically extract and verify the UPI ID:</p>
                 
                 <form id="verificationForm" enctype="multipart/form-data">
-                    <div class="form-row">
-                        <input type="text" id="upiReference" placeholder="Enter UPI reference number (e.g., TXN123456789)" required>
-                    </div>
-                    
                     <div class="file-input-wrapper">
                         <input type="file" id="screenshotFile" class="file-input" accept="image/*" required>
                         <label for="screenshotFile" class="file-input-label" id="fileLabel">
@@ -473,10 +457,18 @@
                 return;
             }
 
+            // Get token from localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showError('Please log in first');
+                window.location.href = 'login.html';
+                return;
+            }
+
             const formData = {
                 package_id: selectedPackage.id,
-                username: document.getElementById('username').value,
-                password: document.getElementById('password').value
+                username: '', // Not needed anymore
+                password: ''  // Not needed anymore
             };
 
             try {
@@ -486,7 +478,8 @@
                 const response = await fetch(`${API_URL}/api/qr-payment/generate`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(formData)
                 });
@@ -521,13 +514,7 @@
         document.getElementById('verificationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const upiReference = document.getElementById('upiReference').value.trim();
             const screenshotFile = document.getElementById('screenshotFile').files[0];
-            
-            if (!upiReference) {
-                showError('Please enter UPI reference number');
-                return;
-            }
             
             if (!screenshotFile) {
                 showError('Please upload payment screenshot');
@@ -539,16 +526,26 @@
                 return;
             }
 
+            // Get token from localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showError('Please log in first');
+                window.location.href = 'login.html';
+                return;
+            }
+
             try {
                 showLoading(true);
 
                 const formData = new FormData();
                 formData.append('order_id', currentOrderId);
-                formData.append('upi_reference', upiReference);
                 formData.append('screenshot', screenshotFile);
 
                 const response = await fetch(`${API_URL}/api/qr-payment/verify`, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
 
@@ -557,8 +554,19 @@
                 if (result.verified) {
                     showSuccess(`Payment verified! ${result.credits_added} credits added to your account.`);
                     document.getElementById('verificationSection').style.display = 'none';
+                    
+                    // Redirect to dashboard after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 3000);
                 } else {
-                    showError(result.message || 'Payment verification failed');
+                    if (result.status === 'wrong_upi_id') {
+                        showError(`${result.message} Detected UPI ID: ${result.extracted_upi_id}`);
+                    } else if (result.status === 'duplicate_upi_id') {
+                        showError(result.message);
+                    } else {
+                        showError(result.message || 'Payment verification failed');
+                    }
                 }
             } catch (error) {
                 showError('Error verifying payment: ' + error.message);

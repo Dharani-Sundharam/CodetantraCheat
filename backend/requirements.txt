@@ -23,3 +23,9 @@ python-dotenv==1.0.0
 
 # Others
 pydantic==2.5.0
+
+# QR Code and Image Processing
+qrcode[pil]==7.4.2
+pillow==10.1.0
+pytesseract==0.3.10
+opencv-python==4.8.1.78

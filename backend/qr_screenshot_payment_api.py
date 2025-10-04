@@ -8,6 +8,10 @@ import io
 import base64
 import uuid
 import os
+import re
+import cv2
+import pytesseract
+from PIL import Image
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from pathlib import Path
@@ -160,36 +164,93 @@ def save_screenshot(screenshot_file: UploadFile, order_id: str) -> str:
     
     return str(file_path)
 
-def verify_screenshot_content(screenshot_path: str, expected_upi_id: str, expected_amount: int) -> bool:
-    """Basic verification of screenshot content"""
-    
-    # For now, we'll do basic file validation
-    # In production, you could use OCR to extract UPI ID and amount from screenshot
+def extract_upi_id_from_screenshot(screenshot_path: str) -> Optional[str]:
+    """Extract UPI ID from payment screenshot using OCR"""
+    try:
+        # Load image
+        image = cv2.imread(screenshot_path)
+        if image is None:
+            return None
+        
+        # Convert to RGB for pytesseract
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # Use pytesseract to extract text
+        text = pytesseract.image_to_string(rgb_image)
+        
+        # Look for UPI ID patterns
+        upi_patterns = [
+            r'upi://pay\?pa=([^&]+)',  # UPI deep link format
+            r'@([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+)',  # Email format UPI ID
+            r'([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+)',  # General email pattern
+            r'UPI ID[:\s]+([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+)',  # UPI ID label
+            r'To[:\s]+([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+)',  # To field
+        ]
+        
+        for pattern in upi_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                upi_id = matches[0].strip()
+                # Validate UPI ID format
+                if '@' in upi_id and '.' in upi_id.split('@')[1]:
+                    return upi_id
+        
+        return None
+        
+    except Exception as e:
+        print(f"Error extracting UPI ID: {e}")
+        return None
+
+def verify_screenshot_content(screenshot_path: str, expected_upi_id: str, expected_amount: int) -> tuple[bool, Optional[str]]:
+    """Verify screenshot content and extract UPI ID"""
     
     if not os.path.exists(screenshot_path):
-        return False
+        return False, None
     
     # Check file size (should be reasonable for a screenshot)
     file_size = os.path.getsize(screenshot_path)
     if file_size < 1000 or file_size > 10 * 1024 * 1024:  # 1KB to 10MB
-        return False
+        return False, None
     
-    # For now, we'll accept any valid screenshot
-    # You can add OCR here to verify UPI ID and amount
-    return True
+    # Extract UPI ID from screenshot
+    extracted_upi_id = extract_upi_id_from_screenshot(screenshot_path)
+    
+    if not extracted_upi_id:
+        return False, None
+    
+    # Check if UPI ID matches expected UPI ID
+    if extracted_upi_id.lower() != expected_upi_id.lower():
+        return False, extracted_upi_id
+    
+    return True, extracted_upi_id
+
+def delete_screenshot(screenshot_path: str):
+    """Delete screenshot file after processing"""
+    try:
+        if os.path.exists(screenshot_path):
+            os.remove(screenshot_path)
+            print(f"Screenshot deleted: {screenshot_path}")
+    except Exception as e:
+        print(f"Error deleting screenshot: {e}")
+
+def check_upi_id_uniqueness(db: Session, upi_id: str, transaction_id: int) -> bool:
+    """Check if UPI ID has been used before for a different transaction"""
+    existing_transaction = db.query(PaymentTransaction).filter(
+        PaymentTransaction.paytm_txn_id == upi_id,
+        PaymentTransaction.id != transaction_id,
+        PaymentTransaction.status == PaymentStatus.SUCCESS
+    ).first()
+    
+    return existing_transaction is None
 
 # API Endpoints
 @router.post("/generate", response_model=QRPaymentResponse)
 async def generate_qr_payment(
     request: QRPaymentRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate QR code for payment"""
-    
-    # Verify user credentials
-    user = verify_user_credentials(db, request.username, request.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
     
     # Get credit package
     package = db.query(CreditPackage).filter(
@@ -203,7 +264,7 @@ async def generate_qr_payment(
     # Create payment transaction
     amount_paise = package.price * 100  # Convert to paise
     transaction = create_qr_payment_transaction(
-        db, user.id, package.id, amount_paise, package.credits
+        db, current_user.id, package.id, amount_paise, package.credits
     )
     
     # Generate QR code
@@ -229,15 +290,16 @@ async def generate_qr_payment(
 @router.post("/verify")
 async def verify_screenshot_payment(
     order_id: str = Form(...),
-    upi_reference: str = Form(...),
     screenshot: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Verify payment using screenshot and UPI reference"""
+    """Verify payment using screenshot with UPI ID extraction"""
     
     # Get transaction
     transaction = db.query(PaymentTransaction).filter(
-        PaymentTransaction.order_id == order_id
+        PaymentTransaction.order_id == order_id,
+        PaymentTransaction.user_id == current_user.id
     ).first()
     
     if not transaction:
@@ -252,46 +314,83 @@ async def verify_screenshot_payment(
             content={"verified": False, "status": "already_processed", "message": "Transaction already processed"}
         )
     
-    # Check if UPI reference is valid (basic validation)
-    if not upi_reference or len(upi_reference) < 10:
-        return JSONResponse(
-            status_code=400,
-            content={"verified": False, "status": "invalid_reference", "message": "Invalid UPI reference number"}
-        )
-    
     try:
         # Save screenshot
         screenshot_path = save_screenshot(screenshot, order_id)
         
-        # Verify screenshot content
-        if not verify_screenshot_content(screenshot_path, UPI_PAYMENT_DETAILS["upi_id"], transaction.amount_in_rupees):
+        # Extract and verify UPI ID from screenshot
+        is_valid, extracted_upi_id = verify_screenshot_content(
+            screenshot_path, 
+            UPI_PAYMENT_DETAILS["upi_id"], 
+            transaction.amount_in_rupees
+        )
+        
+        if not is_valid:
+            # Delete screenshot if verification failed
+            delete_screenshot(screenshot_path)
+            
+            if extracted_upi_id:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "verified": False, 
+                        "status": "wrong_upi_id", 
+                        "message": f"Wrong UPI ID detected: {extracted_upi_id}. Please try again with correct payment screenshot.",
+                        "extracted_upi_id": extracted_upi_id
+                    }
+                )
+            else:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "verified": False, 
+                        "status": "invalid_screenshot", 
+                        "message": "Could not extract UPI ID from screenshot. Please ensure the screenshot shows the payment confirmation clearly."
+                    }
+                )
+        
+        # Check UPI ID uniqueness
+        if not check_upi_id_uniqueness(db, extracted_upi_id, transaction.id):
+            delete_screenshot(screenshot_path)
             return JSONResponse(
                 status_code=400,
-                content={"verified": False, "status": "invalid_screenshot", "message": "Invalid screenshot format or content"}
+                content={
+                    "verified": False, 
+                    "status": "duplicate_upi_id", 
+                    "message": "This UPI ID has already been used for another transaction. Please try again with a different payment."
+                }
             )
         
-        # Payment verified
+        # Payment verified - update transaction
         transaction.status = PaymentStatus.SUCCESS
-        transaction.paytm_txn_id = upi_reference
+        transaction.paytm_txn_id = extracted_upi_id
         transaction.completed_at = datetime.utcnow()
-        transaction.paytm_response = f'{{"UPI_REFERENCE": "{upi_reference}", "SCREENSHOT_PATH": "{screenshot_path}"}}'
+        transaction.paytm_response = f'{{"UPI_ID": "{extracted_upi_id}", "SCREENSHOT_PATH": "{screenshot_path}"}}'
         
-        # Add credits to user
+        # Add credits to user account
         add_credits_to_user(db, transaction.user_id, transaction.credits, transaction.id)
         
         db.commit()
+        
+        # Delete screenshot after successful processing
+        delete_screenshot(screenshot_path)
         
         return JSONResponse(
             status_code=200,
             content={
                 "verified": True,
                 "status": "success",
-                "message": "Payment verified and credits added",
-                "credits_added": transaction.credits
+                "message": f"Payment verified! {transaction.credits} credits added to your account.",
+                "credits_added": transaction.credits,
+                "upi_id": extracted_upi_id
             }
         )
         
     except Exception as e:
+        # Clean up screenshot on error
+        if 'screenshot_path' in locals():
+            delete_screenshot(screenshot_path)
+        
         return JSONResponse(
             status_code=500,
             content={"verified": False, "status": "error", "message": f"Error processing screenshot: {str(e)}"}
