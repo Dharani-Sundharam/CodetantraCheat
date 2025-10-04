@@ -93,6 +93,91 @@
                 </div>
             </div>
 
+            <!-- Admin Transaction Management -->
+            <div class="dashboard-section" id="adminSection" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Admin - All UPI Transaction IDs</h2>
+                    <div>
+                        <button class="btn btn-secondary" onclick="refreshAdminData()">Refresh</button>
+                        <button class="btn btn-primary" onclick="exportTransactions()">Export CSV</button>
+                    </div>
+                </div>
+                
+                <!-- Admin Stats -->
+                <div class="stats-grid" id="adminStats" style="margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="value" id="adminTotalTransactions">0</div>
+                        <div class="label">Total Transactions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="adminSuccessfulTransactions">0</div>
+                        <div class="label">Successful</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="adminPendingTransactions">0</div>
+                        <div class="label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="adminTotalRevenue">₹0</div>
+                        <div class="label">Total Revenue</div>
+                    </div>
+                </div>
+
+                <!-- Admin Filters -->
+                <div class="filters" style="margin-bottom: 20px;">
+                    <h3>Filters & Search</h3>
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="adminStatusFilter">Status</label>
+                            <select id="adminStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="success">Success</option>
+                                <option value="pending">Pending</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="flex: 1; min-width: 200px;">
+                            <label for="adminSearchInput">Search UPI Transaction ID</label>
+                            <input type="text" id="adminSearchInput" placeholder="Enter UPI Transaction ID...">
+                        </div>
+                        <div class="filter-group">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary" onclick="applyAdminFilters()">Apply Filters</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Transactions Table -->
+                <div class="table-container">
+                    <table class="usage-table" id="adminTransactionsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>UPI Transaction ID</th>
+                                <th>User Email</th>
+                                <th>Package</th>
+                                <th>Amount</th>
+                                <th>Credits</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTransactionsBody">
+                            <tr>
+                                <td colspan="8" class="loading">Loading admin transactions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Admin Pagination -->
+                <div class="pagination" id="adminPagination" style="display: none;">
+                    <button onclick="previousAdminPage()" id="adminPrevBtn">Previous</button>
+                    <span id="adminPageInfo">Page 1 of 1</span>
+                    <button onclick="nextAdminPage()" id="adminNextBtn">Next</button>
+                </div>
+            </div>
+
             <!-- Usage History -->
             <div class="dashboard-section">
                 <h2>Recent Activity</h2>
@@ -151,6 +236,11 @@
 
                 // Load recent transactions
                 await loadRecentTransactions();
+                
+                // Load admin transactions if user is admin
+                if (user.email === 'admin@codetantra.ac.in') {
+                    await loadAdminTransactions();
+                }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
             }
@@ -254,6 +344,155 @@
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'login.html';
+        }
+
+        // Admin functionality
+        let adminCurrentPage = 1;
+        let adminTotalPages = 1;
+        let adminAllTransactions = [];
+
+        async function loadAdminTransactions(page = 1) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/api/qr-payment/admin/transactions?page=${page}&limit=20`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        // Not admin, hide admin section
+                        document.getElementById('adminSection').style.display = 'none';
+                        return;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                adminAllTransactions = data.transactions;
+                adminCurrentPage = data.pagination.page;
+                adminTotalPages = data.pagination.pages;
+
+                displayAdminTransactions(data.transactions);
+                updateAdminPagination(data.pagination);
+                updateAdminStats(data.transactions);
+
+                // Show admin section if user is admin
+                document.getElementById('adminSection').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading admin transactions:', error);
+                document.getElementById('adminTransactionsBody').innerHTML = 
+                    '<tr><td colspan="8" class="error">Error loading admin transactions</td></tr>';
+            }
+        }
+
+        function displayAdminTransactions(transactions) {
+            const tbody = document.getElementById('adminTransactionsBody');
+            
+            if (transactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="loading">No transactions found</td></tr>';
+                return;
+            }
+
+            const html = transactions.map(txn => `
+                <tr>
+                    <td>${txn.id}</td>
+                    <td><span style="font-family: monospace; background: #374151; padding: 2px 6px; border-radius: 4px;">${txn.upi_transaction_id || 'N/A'}</span></td>
+                    <td>${txn.user_email}</td>
+                    <td>${txn.package_name}</td>
+                    <td>₹${txn.amount}</td>
+                    <td>${txn.credits}</td>
+                    <td><span class="status ${txn.status}">${txn.status}</span></td>
+                    <td>${new Date(txn.created_at).toLocaleString()}</td>
+                </tr>
+            `).join('');
+
+            tbody.innerHTML = html;
+        }
+
+        function updateAdminPagination(pagination) {
+            const paginationDiv = document.getElementById('adminPagination');
+            const pageInfo = document.getElementById('adminPageInfo');
+            const prevBtn = document.getElementById('adminPrevBtn');
+            const nextBtn = document.getElementById('adminNextBtn');
+
+            if (pagination.pages <= 1) {
+                paginationDiv.style.display = 'none';
+                return;
+            }
+
+            paginationDiv.style.display = 'flex';
+            pageInfo.textContent = `Page ${pagination.page} of ${pagination.pages}`;
+            prevBtn.disabled = pagination.page <= 1;
+            nextBtn.disabled = pagination.page >= pagination.pages;
+        }
+
+        function updateAdminStats(transactions) {
+            const totalTxn = transactions.length;
+            const successfulTxn = transactions.filter(txn => txn.status === 'success').length;
+            const pendingTxn = transactions.filter(txn => txn.status === 'pending').length;
+            const totalRevenue = transactions.reduce((sum, txn) => sum + txn.amount, 0);
+
+            document.getElementById('adminTotalTransactions').textContent = totalTxn;
+            document.getElementById('adminSuccessfulTransactions').textContent = successfulTxn;
+            document.getElementById('adminPendingTransactions').textContent = pendingTxn;
+            document.getElementById('adminTotalRevenue').textContent = `₹${totalRevenue}`;
+        }
+
+        function previousAdminPage() {
+            if (adminCurrentPage > 1) {
+                loadAdminTransactions(adminCurrentPage - 1);
+            }
+        }
+
+        function nextAdminPage() {
+            if (adminCurrentPage < adminTotalPages) {
+                loadAdminTransactions(adminCurrentPage + 1);
+            }
+        }
+
+        function applyAdminFilters() {
+            const statusFilter = document.getElementById('adminStatusFilter').value;
+            const searchInput = document.getElementById('adminSearchInput').value.toLowerCase();
+
+            let filteredTransactions = adminAllTransactions;
+
+            if (statusFilter) {
+                filteredTransactions = filteredTransactions.filter(txn => txn.status === statusFilter);
+            }
+
+            if (searchInput) {
+                filteredTransactions = filteredTransactions.filter(txn => 
+                    (txn.upi_transaction_id && txn.upi_transaction_id.toLowerCase().includes(searchInput)) ||
+                    txn.user_email.toLowerCase().includes(searchInput) ||
+                    txn.order_id.toLowerCase().includes(searchInput)
+                );
+            }
+
+            displayAdminTransactions(filteredTransactions);
+            updateAdminStats(filteredTransactions);
+        }
+
+        function refreshAdminData() {
+            loadAdminTransactions(adminCurrentPage);
+        }
+
+        function exportTransactions() {
+            const csvContent = "data:text/csv;charset=utf-8," + 
+                "ID,UPI Transaction ID,User Email,Package,Amount,Credits,Status,Created\n" +
+                adminAllTransactions.map(txn => 
+                    `${txn.id},"${txn.upi_transaction_id || ''}","${txn.user_email}","${txn.package_name}",${txn.amount},${txn.credits},${txn.status},"${new Date(txn.created_at).toLocaleString()}"`
+                ).join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "transactions.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         loadDashboard();

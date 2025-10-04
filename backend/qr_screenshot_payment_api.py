@@ -328,7 +328,7 @@ async def verify_manual_payment(
                 content={
                     "verified": False, 
                     "status": "duplicate_transaction_id", 
-                    "message": "This UPI Transaction ID has already been used for another transaction. Please try again with a different payment."
+                    "message": "This UPI Transaction ID is not valid or has already been used. Please check your payment confirmation and try again with a different transaction ID."
                 }
             )
         
@@ -367,3 +367,52 @@ async def verify_manual_payment(
             status_code=500,
             content={"verified": False, "status": "error", "message": f"Error processing payment: {str(e)}"}
         )
+
+@router.get("/admin/transactions")
+async def get_all_transactions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    page: int = 1,
+    limit: int = 50
+):
+    """Get all payment transactions for admin panel"""
+    
+    # Check if user is admin (you can implement proper admin check)
+    if current_user.email != "admin@codetantra.ac.in":
+        raise HTTPException(status_code=403, detail="Access denied. Admin privileges required.")
+    
+    # Calculate offset for pagination
+    offset = (page - 1) * limit
+    
+    # Get all transactions
+    transactions = db.query(PaymentTransaction).order_by(PaymentTransaction.created_at.desc()).offset(offset).limit(limit).all()
+    
+    # Get total count for pagination
+    total_count = db.query(PaymentTransaction).count()
+    
+    # Format transaction data
+    transaction_list = []
+    for txn in transactions:
+        transaction_list.append({
+            "id": txn.id,
+            "order_id": txn.order_id,
+            "upi_transaction_id": txn.upi_transaction_id,
+            "user_email": txn.user.email if txn.user else "Unknown User",
+            "package_name": txn.package.name if txn.package else "Unknown Package",
+            "amount": txn.amount_in_rupees,
+            "credits": txn.credits,
+            "status": txn.status.value,
+            "created_at": txn.created_at.isoformat(),
+            "completed_at": txn.completed_at.isoformat() if txn.completed_at else None,
+            "is_successful": txn.is_successful
+        })
+    
+    return {
+        "transactions": transaction_list,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total_count,
+            "pages": (total_count + limit - 1) // limit
+        }
+    }
