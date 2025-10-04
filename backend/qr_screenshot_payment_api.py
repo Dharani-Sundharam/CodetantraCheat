@@ -506,12 +506,102 @@ async def get_transaction_history(
             "is_successful": txn.is_successful
         })
     
-    return {
-        "transactions": transaction_list,
-        "pagination": {
-            "page": page,
-            "limit": limit,
-            "total": total_count,
-            "pages": (total_count + limit - 1) // limit
+        return {
+            "transactions": transaction_list,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "pages": (total_count + limit - 1) // limit
+            }
         }
-    }
+
+@router.post("/verify-manual")
+async def verify_manual_payment(
+    request: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Verify payment using manually entered UPI Transaction ID"""
+    
+    order_id = request.get("order_id")
+    upi_transaction_id = request.get("upi_transaction_id")
+    
+    if not order_id or not upi_transaction_id:
+        return JSONResponse(
+            status_code=400,
+            content={"verified": False, "status": "error", "message": "Missing order_id or upi_transaction_id"}
+        )
+    
+    # Validate UPI Transaction ID format (12 digits)
+    if not re.match(r'^\d{12}$', upi_transaction_id):
+        return JSONResponse(
+            status_code=400,
+            content={"verified": False, "status": "error", "message": "Invalid UPI Transaction ID format. Must be 12 digits."}
+        )
+    
+    # Get transaction
+    transaction = db.query(PaymentTransaction).filter(
+        PaymentTransaction.order_id == order_id,
+        PaymentTransaction.user_id == current_user.id
+    ).first()
+    
+    if not transaction:
+        return JSONResponse(
+            status_code=400,
+            content={"verified": False, "status": "error", "message": f"Transaction not found for order_id: {order_id}"}
+        )
+    
+    if transaction.status != PaymentStatus.PENDING:
+        return JSONResponse(
+            status_code=400,
+            content={"verified": False, "status": "already_processed", "message": "Transaction already processed"}
+        )
+    
+    try:
+        # Check for duplicate UPI Transaction ID
+        if not check_transaction_id_uniqueness(db, upi_transaction_id, transaction.id):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "verified": False, 
+                    "status": "duplicate_transaction_id", 
+                    "message": "This UPI Transaction ID has already been used for another transaction. Please try again with a different payment."
+                }
+            )
+        
+        # Payment verified - update transaction
+        transaction.status = PaymentStatus.SUCCESS
+        transaction.upi_transaction_id = upi_transaction_id
+        transaction.paytm_txn_id = upi_transaction_id  # Keep for backward compatibility
+        transaction.completed_at = datetime.utcnow()
+        transaction.paytm_response = f'{{"UPI_TXN_ID": "{upi_transaction_id}", "MANUAL_ENTRY": true}}'
+        
+        # Add credits to user account
+        add_credits_to_user(db, transaction.user_id, transaction.credits, transaction.id)
+        
+        db.commit()
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "verified": True, 
+                "status": "success", 
+                "message": f"Payment verified! Amount: Rs. 1, Transaction ID: {upi_transaction_id}. {transaction.credits} credits added to your account.",
+                "credits_added": transaction.credits,
+                "upi_transaction_id": upi_transaction_id,
+                "amount_paid": 1,
+                "transaction_details": {
+                    "amount": "Rs. 1",
+                    "transaction_id": upi_transaction_id,
+                    "credits_added": transaction.credits
+                }
+            }
+        )
+        
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(
+            status_code=500,
+            content={"verified": False, "status": "error", "message": f"Error processing payment: {str(e)}"}
+        )

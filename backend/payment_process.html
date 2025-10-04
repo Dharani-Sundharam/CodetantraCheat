@@ -229,6 +229,66 @@
             padding-left: 20px;
         }
         
+        .verification-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-dark-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .input-help {
+            display: block;
+            margin-top: 5px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
         .instructions ol li {
             margin-bottom: 8px;
         }
@@ -288,17 +348,39 @@
             <!-- Verification Section -->
             <div class="verification-section">
                 <h3>Verify Payment</h3>
-                <p>Upload your payment screenshot to verify and add credits to your account:</p>
+                <p>Choose how you want to verify your payment:</p>
                 
-                <form id="verificationForm" enctype="multipart/form-data">
+                <!-- Verification Method Tabs -->
+                <div class="verification-tabs">
+                    <button class="tab-btn active" onclick="switchTab('screenshot')">Screenshot Upload</button>
+                    <button class="tab-btn" onclick="switchTab('manual')">Manual Entry</button>
+                </div>
+                
+                <!-- Screenshot Upload Form -->
+                <form id="screenshotForm" enctype="multipart/form-data" style="display: block;">
                     <div class="file-input-wrapper">
-                        <input type="file" id="screenshotFile" class="file-input" accept="image/*" required>
+                        <input type="file" id="screenshotFile" class="file-input" accept="image/*">
                         <label for="screenshotFile" class="file-input-label" id="fileLabel">
-                            📷 Click to upload payment screenshot
+                            Click to upload payment screenshot
                         </label>
                     </div>
                     
-                    <button type="submit" class="btn-verify" id="verifyButton">Verify Payment</button>
+                    <button type="submit" class="btn-verify" id="verifyScreenshotButton">Verify with Screenshot</button>
+                </form>
+                
+                <!-- Manual Entry Form -->
+                <form id="manualForm" style="display: none;">
+                    <div class="input-group">
+                        <label for="upiTransactionId">UPI Transaction ID (12-digit number):</label>
+                        <input type="text" id="upiTransactionId" class="form-input" 
+                               placeholder="Enter 12-digit UPI Transaction ID" 
+                               pattern="[0-9]{12}" 
+                               maxlength="12"
+                               required>
+                        <small class="input-help">Enter the 12-digit transaction ID from your payment confirmation</small>
+                    </div>
+                    
+                    <button type="submit" class="btn-verify" id="verifyManualButton">Verify with Transaction ID</button>
                 </form>
                 
                 <div class="status-message" id="statusMessage"></div>
@@ -367,8 +449,28 @@
             currentOrderId = paymentData.order_id;
         }
 
-        // Handle verification form submission
-        document.getElementById('verificationForm').addEventListener('submit', async (e) => {
+        // Tab switching functionality
+        function switchTab(tab) {
+            const screenshotForm = document.getElementById('screenshotForm');
+            const manualForm = document.getElementById('manualForm');
+            const tabs = document.querySelectorAll('.tab-btn');
+            
+            // Remove active class from all tabs
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            if (tab === 'screenshot') {
+                screenshotForm.style.display = 'block';
+                manualForm.style.display = 'none';
+                document.querySelector('.tab-btn[onclick="switchTab(\'screenshot\')"]').classList.add('active');
+            } else {
+                screenshotForm.style.display = 'none';
+                manualForm.style.display = 'block';
+                document.querySelector('.tab-btn[onclick="switchTab(\'manual\')"]').classList.add('active');
+            }
+        }
+
+        // Handle screenshot form submission
+        document.getElementById('screenshotForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const screenshotFile = document.getElementById('screenshotFile').files[0];
@@ -450,20 +552,93 @@
             }
         });
 
+        // Handle manual form submission
+        document.getElementById('manualForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const upiTransactionId = document.getElementById('upiTransactionId').value.trim();
+            
+            if (!upiTransactionId) {
+                showError('Please enter UPI Transaction ID');
+                return;
+            }
+            
+            if (!/^\d{12}$/.test(upiTransactionId)) {
+                showError('Please enter a valid 12-digit UPI Transaction ID');
+                return;
+            }
+
+            if (!currentOrderId) {
+                showError('No active payment session');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                hideMessages();
+
+                const response = await fetch(`${API_URL}/api/qr-payment/verify-manual`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order_id: currentOrderId,
+                        upi_transaction_id: upiTransactionId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', response.status, errorText);
+                    showError(`Server error: ${response.status} - ${errorText}`);
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (result.verified) {
+                    showSuccess(`Payment successful! ${result.credits_added} credits have been added to your account.`);
+                    document.getElementById('verifyManualButton').disabled = true;
+                    document.getElementById('verifyManualButton').textContent = 'Payment Verified ✓';
+                    
+                    // Clear session storage
+                    sessionStorage.removeItem('paymentData');
+                    
+                    // Redirect to dashboard after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 3000);
+                } else {
+                    if (result.status === 'duplicate_transaction_id') {
+                        showError(result.message);
+                    } else {
+                        showError(result.message || 'Payment verification failed');
+                    }
+                }
+            } catch (error) {
+                showError('Error verifying payment: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
         // File input change handler
         document.getElementById('screenshotFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const label = document.getElementById('fileLabel');
             if (file) {
-                label.textContent = `📷 ${file.name}`;
+                label.textContent = `${file.name}`;
             } else {
-                label.textContent = '📷 Click to upload payment screenshot';
+                label.textContent = 'Click to upload payment screenshot';
             }
         });
 
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
-            document.getElementById('verifyButton').disabled = show;
+            document.getElementById('verifyScreenshotButton').disabled = show;
+            document.getElementById('verifyManualButton').disabled = show;
         }
 
         function showSuccess(message) {
