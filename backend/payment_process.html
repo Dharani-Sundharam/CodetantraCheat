@@ -349,15 +349,21 @@
             <div class="verification-section">
                 <h3>Verify Payment</h3>
                 <p>Choose how you want to verify your payment:</p>
+                <div style="background: #1e3a8a; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+                    <strong style="color: #60a5fa;">💡 Recommended:</strong> Use <strong>Manual Entry</strong> to enter your actual UPI Transaction ID from the payment confirmation.
+                </div>
                 
                 <!-- Verification Method Tabs -->
                 <div class="verification-tabs">
-                    <button class="tab-btn active" onclick="switchTab('screenshot')">Screenshot Upload</button>
-                    <button class="tab-btn" onclick="switchTab('manual')">Manual Entry</button>
+                    <button class="tab-btn" onclick="switchTab('screenshot')">Screenshot Upload</button>
+                    <button class="tab-btn active" onclick="switchTab('manual')">Manual Entry</button>
                 </div>
                 
                 <!-- Screenshot Upload Form -->
-                <form id="screenshotForm" enctype="multipart/form-data" style="display: block;">
+                <form id="screenshotForm" enctype="multipart/form-data" style="display: none;">
+                    <div style="background: #374151; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; color: #d1d5db;">
+                        <strong>Note:</strong> Screenshot upload will generate a random transaction ID. For accurate tracking, use Manual Entry instead.
+                    </div>
                     <div class="file-input-wrapper">
                         <input type="file" id="screenshotFile" class="file-input" accept="image/*" required>
                         <label for="screenshotFile" class="file-input-label" id="fileLabel">
@@ -369,7 +375,10 @@
                 </form>
                 
                 <!-- Manual Entry Form -->
-                <form id="manualForm" style="display: none;">
+                <form id="manualForm" style="display: block;">
+                    <div style="background: #065f46; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; color: #a7f3d0;">
+                        <strong>✅ Recommended Method:</strong> Enter your actual UPI Transaction ID for accurate payment tracking.
+                    </div>
                     <div class="input-group">
                         <label for="upiTransactionId">UPI Transaction ID (12-digit number):</label>
                         <input type="text" id="upiTransactionId" class="form-input" 
