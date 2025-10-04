@@ -61,7 +61,7 @@ class PaymentVerificationResponse(BaseModel):
 
 # UPI Payment Details (You can customize these)
 UPI_PAYMENT_DETAILS = {
-    "upi_id": "ctautomationpro@paytm",  # Your UPI ID
+    "upi_id": "paytm.s17np8c@pty",  # Your UPI ID
     "merchant_name": "CodeTantra Automation",
     "merchant_code": "CTPRO"
 }
