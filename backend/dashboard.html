@@ -82,6 +82,17 @@
                 </div>
             </div>
 
+            <!-- Transaction History -->
+            <div class="dashboard-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Transaction History</h2>
+                    <a href="transaction_history.html" class="btn btn-primary">View All Transactions</a>
+                </div>
+                <div id="recentTransactions">
+                    <div class="loading">Loading recent transactions...</div>
+                </div>
+            </div>
+
             <!-- Usage History -->
             <div class="dashboard-section">
                 <h2>Recent Activity</h2>
@@ -137,6 +148,9 @@
                     displayUsageHistory(history.logs);
                     updateStats(history.logs);
                 }
+
+                // Load recent transactions
+                await loadRecentTransactions();
             } catch (error) {
                 console.error('Error loading dashboard:', error);
             }
@@ -162,6 +176,63 @@
             
             document.getElementById('totalProblems').textContent = totalProblems;
             document.getElementById('creditsUsed').textContent = creditsUsed;
+        }
+
+        async function loadRecentTransactions() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/api/qr-payment/history?page=1&limit=5`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayRecentTransactions(data.transactions);
+
+            } catch (error) {
+                console.error('Error loading recent transactions:', error);
+                document.getElementById('recentTransactions').innerHTML = 
+                    '<div class="error">Error loading transactions</div>';
+            }
+        }
+
+        function displayRecentTransactions(transactions) {
+            const container = document.getElementById('recentTransactions');
+            
+            if (transactions.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                        <p>No transactions yet</p>
+                        <a href="qr_payment.html" class="btn btn-primary" style="margin-top: 10px;">Make a Payment</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = transactions.map(txn => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--bg-secondary); margin-bottom: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;">${txn.package_name}</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                            ${txn.upi_transaction_id ? `TXN: ${txn.upi_transaction_id}` : `Order: ${txn.order_id}`}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 600; color: var(--success-color);">₹${txn.amount}</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">${txn.credits} credits</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                            ${new Date(txn.created_at).toLocaleDateString()}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
         }
 
         function copyReferralCode() {

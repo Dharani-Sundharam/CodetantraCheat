@@ -115,6 +115,7 @@ class PaymentTransaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     package_id = Column(Integer, ForeignKey("credit_packages.id"))
     order_id = Column(String, unique=True, index=True, nullable=False)
+    upi_transaction_id = Column(String, unique=True, index=True, nullable=True)  # UPI Transaction ID (12-digit)
     paytm_txn_id = Column(String, nullable=True)  # UPI reference or transaction ID
     paytm_txn_token = Column(String, nullable=True)
     amount = Column(Integer, nullable=False)  # Amount in paise

@@ -253,7 +253,7 @@ def delete_screenshot(screenshot_path: str):
 def check_transaction_id_uniqueness(db: Session, txn_id: str, transaction_id: int) -> bool:
     """Check if UPI Transaction ID has been used before for a different transaction"""
     existing_transaction = db.query(PaymentTransaction).filter(
-        PaymentTransaction.paytm_txn_id == txn_id,
+        PaymentTransaction.upi_transaction_id == txn_id,
         PaymentTransaction.id != transaction_id,
         PaymentTransaction.status == PaymentStatus.SUCCESS
     ).first()
@@ -374,7 +374,8 @@ async def verify_screenshot_payment(
         
         # Payment verified - update transaction
         transaction.status = PaymentStatus.SUCCESS
-        transaction.paytm_txn_id = extracted_txn_id
+        transaction.upi_transaction_id = extracted_txn_id  # Store in the new unique field
+        transaction.paytm_txn_id = extracted_txn_id  # Keep for backward compatibility
         transaction.completed_at = datetime.utcnow()
         transaction.paytm_response = f'{{"UPI_TXN_ID": "{extracted_txn_id}", "SCREENSHOT_PATH": "{screenshot_path}"}}'
         
@@ -466,3 +467,51 @@ async def get_screenshot(order_id: str, db: Session = Depends(get_db)):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving screenshot: {str(e)}")
+
+@router.get("/history")
+async def get_transaction_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    page: int = 1,
+    limit: int = 10
+):
+    """Get user's payment transaction history"""
+    
+    # Calculate offset for pagination
+    offset = (page - 1) * limit
+    
+    # Get transactions for the user
+    transactions = db.query(PaymentTransaction).filter(
+        PaymentTransaction.user_id == current_user.id
+    ).order_by(PaymentTransaction.created_at.desc()).offset(offset).limit(limit).all()
+    
+    # Get total count for pagination
+    total_count = db.query(PaymentTransaction).filter(
+        PaymentTransaction.user_id == current_user.id
+    ).count()
+    
+    # Format transaction data
+    transaction_list = []
+    for txn in transactions:
+        transaction_list.append({
+            "id": txn.id,
+            "order_id": txn.order_id,
+            "upi_transaction_id": txn.upi_transaction_id,
+            "package_name": txn.package.name if txn.package else "Unknown Package",
+            "amount": txn.amount_in_rupees,
+            "credits": txn.credits,
+            "status": txn.status.value,
+            "created_at": txn.created_at.isoformat(),
+            "completed_at": txn.completed_at.isoformat() if txn.completed_at else None,
+            "is_successful": txn.is_successful
+        })
+    
+    return {
+        "transactions": transaction_list,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total_count,
+            "pages": (total_count + limit - 1) // limit
+        }
+    }
