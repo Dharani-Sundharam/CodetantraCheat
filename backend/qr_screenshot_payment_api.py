@@ -14,16 +14,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from pathlib import Path
 
-# Optional imports for image processing
-try:
-    import cv2
-    import pytesseract
-    IMAGE_PROCESSING_AVAILABLE = True
-except ImportError:
-    IMAGE_PROCESSING_AVAILABLE = False
-    print("Warning: OpenCV and/or pytesseract not available. UPI ID extraction will be limited.")
-
-from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -67,8 +58,6 @@ UPI_PAYMENT_DETAILS = {
 }
 
 # Create uploads directory
-UPLOAD_DIR = Path("backend/uploads/screenshots")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 def generate_upi_qr_code(amount: int, order_id: str, merchant_name: str, upi_id: str) -> str:
     """Generate UPI QR code with payment details"""
@@ -157,94 +146,6 @@ def add_credits_to_user(db: Session, user_id: int, credits: int, transaction_id:
         db.add(transaction_record)
         db.commit()
 
-def save_screenshot(screenshot_file: UploadFile, order_id: str) -> str:
-    """Save screenshot to disk and return file path"""
-    
-    # Create filename
-    file_extension = screenshot_file.filename.split('.')[-1] if '.' in screenshot_file.filename else 'png'
-    filename = f"{order_id}_screenshot.{file_extension}"
-    file_path = UPLOAD_DIR / filename
-    
-    # Save file
-    with open(file_path, 'wb') as f:
-        content = screenshot_file.file.read()
-        f.write(content)
-    
-    return str(file_path)
-
-def extract_upi_transaction_id_from_screenshot(screenshot_path: str) -> Optional[str]:
-    """Extract UPI Transaction ID from payment screenshot using OCR"""
-    try:
-        if not IMAGE_PROCESSING_AVAILABLE:
-            # Fallback: basic file validation only
-            print("Image processing not available, skipping UPI transaction ID extraction")
-            return None
-
-        # Load image
-        image = cv2.imread(screenshot_path)
-        if image is None:
-            return None
-
-        # Convert to RGB for pytesseract
-        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # Use pytesseract to extract text
-        text = pytesseract.image_to_string(rgb_image)
-        
-        # Look for UPI Transaction ID patterns (12-digit numbers)
-        upi_txn_patterns = [
-            r'UPI transaction ID[:\s]+(\d{12})',  # UPI transaction ID label
-            r'UPI Transaction ID[:\s]+(\d{12})',  # UPI Transaction ID label (capital T)
-            r'Transaction ID[:\s]+(\d{12})',  # Transaction ID label
-            r'Txn ID[:\s]+(\d{12})',  # Txn ID label
-            r'(\d{12})',  # Any 12-digit number
-        ]
-        
-        for pattern in upi_txn_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            if matches:
-                txn_id = matches[0].strip()
-                # Validate that it's a 12-digit number
-                if txn_id.isdigit() and len(txn_id) == 12:
-                    return txn_id
-        
-        return None
-        
-    except Exception as e:
-        return None
-
-def verify_screenshot_content(screenshot_path: str, expected_upi_id: str, expected_amount: int) -> tuple[bool, Optional[str]]:
-    """Verify screenshot content and extract UPI Transaction ID"""
-    
-    if not os.path.exists(screenshot_path):
-        return False, None
-    
-    # Check file size (should be reasonable for a screenshot)
-    file_size = os.path.getsize(screenshot_path)
-    if file_size < 1000 or file_size > 10 * 1024 * 1024:  # 1KB to 10MB
-        return False, None
-    
-    # For production: Accept any valid screenshot and generate unique transaction ID
-    # This prevents duplicate transaction ID errors
-    import time
-    import random
-    
-    # Generate a unique 12-digit transaction ID
-    timestamp = int(time.time()) % 1000000000000  # Last 12 digits of timestamp
-    random_part = random.randint(1000, 9999)  # 4-digit random number
-    extracted_txn_id = f"{timestamp:08d}{random_part:04d}"  # 12-digit unique ID
-    
-    # For production: Accept any screenshot as valid (amount verification disabled)
-    # In a real implementation, you would extract and verify the actual amount from the screenshot
-    return True, extracted_txn_id
-
-def delete_screenshot(screenshot_path: str):
-    """Delete screenshot file after processing"""
-    try:
-        if os.path.exists(screenshot_path):
-            os.remove(screenshot_path)
-    except Exception as e:
-        pass
 
 def check_transaction_id_uniqueness(db: Session, txn_id: str, transaction_id: int) -> bool:
     """Check if UPI Transaction ID has been used before for a different transaction"""
@@ -301,102 +202,6 @@ async def generate_qr_payment(
         user_email=current_user.email
     )
 
-@router.post("/verify")
-async def verify_screenshot_payment(
-    order_id: str = Form(...),
-    screenshot: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Verify payment using screenshot with UPI ID extraction"""
-    
-    # Get transaction
-    transaction = db.query(PaymentTransaction).filter(
-        PaymentTransaction.order_id == order_id,
-        PaymentTransaction.user_id == current_user.id
-    ).first()
-    
-    if not transaction:
-        return JSONResponse(
-            status_code=400,
-            content={"verified": False, "status": "error", "message": f"Transaction not found for order_id: {order_id}, user_id: {current_user.id}"}
-        )
-    
-    if transaction.status != PaymentStatus.PENDING:
-        return JSONResponse(
-            status_code=400,
-            content={"verified": False, "status": "already_processed", "message": "Transaction already processed"}
-        )
-    
-    try:
-        # Save screenshot
-        screenshot_path = save_screenshot(screenshot, order_id)
-        
-        # For screenshot verification, we'll just accept any screenshot and generate a unique ID
-        # The actual UPI Transaction ID should be entered manually
-        import time
-        import random
-        
-        # Generate a unique 12-digit transaction ID
-        timestamp = int(time.time()) % 1000000000000  # Last 12 digits of timestamp
-        random_part = random.randint(1000, 9999)  # 4-digit random number
-        generated_txn_id = f"{timestamp:08d}{random_part:04d}"  # 12-digit unique ID
-        
-        # Check Transaction ID uniqueness
-        if not check_transaction_id_uniqueness(db, generated_txn_id, transaction.id):
-            delete_screenshot(screenshot_path)
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "verified": False, 
-                    "status": "duplicate_transaction_id", 
-                    "message": "Generated transaction ID already exists. Please try again."
-                }
-            )
-        
-        # Payment verified - update transaction
-        transaction.status = PaymentStatus.SUCCESS
-        transaction.upi_transaction_id = generated_txn_id  # Store generated ID
-        transaction.paytm_txn_id = generated_txn_id  # Keep for backward compatibility
-        transaction.completed_at = datetime.utcnow()
-        transaction.paytm_response = f'{{"UPI_TXN_ID": "{generated_txn_id}", "SCREENSHOT_PATH": "{screenshot_path}", "AUTO_GENERATED": true}}'
-        
-        # Add credits to user account
-        add_credits_to_user(db, transaction.user_id, transaction.credits, transaction.id)
-        
-        db.commit()
-        
-        # Payment successfully processed
-        
-        # Delete screenshot after successful processing
-        delete_screenshot(screenshot_path)
-        
-        return JSONResponse(
-            status_code=200,
-            content={
-                "verified": True, 
-                "status": "success", 
-                "message": f"Payment verified! Amount: Rs. {transaction.amount_in_rupees}, Transaction ID: {generated_txn_id}. {transaction.credits} credits added to your account.",
-                "credits_added": transaction.credits,
-                "upi_transaction_id": generated_txn_id,
-                "amount_paid": transaction.amount_in_rupees,
-                "transaction_details": {
-                    "amount": f"Rs. {transaction.amount_in_rupees}",
-                    "transaction_id": generated_txn_id,
-                    "credits_added": transaction.credits
-                }
-            }
-        )
-        
-    except Exception as e:
-        # Clean up screenshot on error
-        if 'screenshot_path' in locals():
-            delete_screenshot(screenshot_path)
-        
-        return JSONResponse(
-            status_code=500,
-            content={"verified": False, "status": "error", "message": f"Error processing screenshot: {str(e)}"}
-        )
 
 @router.get("/status/{order_id}")
 async def get_payment_status(order_id: str, db: Session = Depends(get_db)):
@@ -424,31 +229,6 @@ async def get_credit_packages(db: Session = Depends(get_db)):
     packages = db.query(CreditPackage).filter(CreditPackage.is_active == True).all()
     return packages
 
-@router.get("/screenshot/{order_id}")
-async def get_screenshot(order_id: str, db: Session = Depends(get_db)):
-    """Get screenshot for a transaction (for verification purposes)"""
-    
-    transaction = db.query(PaymentTransaction).filter(
-        PaymentTransaction.order_id == order_id
-    ).first()
-    
-    if not transaction:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    
-    # Extract screenshot path from paytm_response
-    import json
-    try:
-        response_data = json.loads(transaction.paytm_response or "{}")
-        screenshot_path = response_data.get("SCREENSHOT_PATH")
-        
-        if not screenshot_path or not os.path.exists(screenshot_path):
-            raise HTTPException(status_code=404, detail="Screenshot not found")
-        
-        # Return file
-        return FileResponse(screenshot_path)
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving screenshot: {str(e)}")
 
 @router.get("/history")
 async def get_transaction_history(
