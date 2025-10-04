@@ -346,20 +346,30 @@ body {
 
 /* Dashboard Download Card */
 .dashboard-card.download-card {
-    padding: 30px;
-    margin-bottom: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    text-align: center;
 }
 
 .dashboard-card.download-card h2 {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
+    font-size: 1.5rem;
 }
 
 .dashboard-card.download-card p {
-    margin-bottom: 20px;
+    margin-bottom: 18px;
+    color: var(--text-secondary);
 }
 
 .dashboard-card.download-card .btn {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
+    display: inline-block;
+}
+
+.dashboard-card.download-card .download-note {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
 }
 
 /* Auth Pages */
@@ -783,6 +793,21 @@ body {
     padding: 12px 0;
     color: var(--text-secondary);
     font-size: 18px;
+}
+
+.pricing-note {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    background: var(--bg-dark-card);
+    border-radius: 8px;
+    border: 1px solid var(--border-dark);
+}
+
+.pricing-note p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
 }
 
 /* CTA Section */
