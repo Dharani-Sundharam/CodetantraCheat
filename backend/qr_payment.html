@@ -329,18 +329,12 @@
         </div>
 
         <div class="qr-payment-form">
-            <form id="qrPaymentForm">
-                <div class="form-group">
-                    <label>Select Credit Package</label>
-                    <div class="package-grid" id="packageGrid">
-                        <!-- Packages will be loaded here -->
-                    </div>
+            <div class="form-group">
+                <label>Select Credit Package</label>
+                <div class="package-grid" id="packageGrid">
+                    <!-- Packages will be loaded here -->
                 </div>
-
-                <button type="submit" class="btn-generate-qr" id="generateQrButton" disabled>
-                    Generate QR Code
-                </button>
-            </form>
+            </div>
         </div>
 
         <div class="qr-display" id="qrDisplay">
@@ -351,8 +345,8 @@
                 <h3>Payment Details</h3>
                 <p><strong>Amount:</strong> Rs. <span id="paymentAmount">0</span></p>
                 <p><strong>UPI ID:</strong> <span id="upiId">ctautomationpro@paytm</span></p>
+                <p><strong>Credits will be added to:</strong> <span id="userEmail">-</span></p>
                 <p><strong>Order ID:</strong> <span id="orderId">-</span></p>
-                <p><strong>Credits:</strong> <span id="creditsAmount">0</span></p>
             </div>
 
             <div class="upi-instructions">
@@ -360,16 +354,15 @@
                 <ol>
                     <li>Open any UPI app (PhonePe, Google Pay, Paytm, etc.)</li>
                     <li>Scan the QR code above</li>
-                    <li>Enter the exact amount shown</li>
                     <li>Complete the payment</li>
                     <li>Take a screenshot of the payment confirmation</li>
-                    <li>Upload the screenshot below - the system will automatically verify your payment</li>
+                    <li>Upload the screenshot below</li>
                 </ol>
             </div>
 
             <div class="verification-section" id="verificationSection">
                 <h3>Verify Payment</h3>
-                <p>After completing payment, upload your payment screenshot. The system will automatically extract and verify the UPI ID:</p>
+                <p>Upload your payment screenshot to verify and add credits to your account:</p>
                 
                 <form id="verificationForm" enctype="multipart/form-data">
                     <div class="file-input-wrapper">
@@ -433,8 +426,8 @@
             });
         }
 
-        // Select package
-        function selectPackage(packageId) {
+        // Select package and auto-generate QR
+        async function selectPackage(packageId) {
             // Remove previous selection
             document.querySelectorAll('.package-card').forEach(card => {
                 card.classList.remove('selected');
@@ -445,13 +438,13 @@
             selectedCard.classList.add('selected');
             
             selectedPackage = packages.find(pkg => pkg.id === packageId);
-            document.getElementById('generateQrButton').disabled = false;
+            
+            // Auto-generate QR code
+            await generateQrCode();
         }
 
-        // Handle QR generation form submission
-        document.getElementById('qrPaymentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
+        // Generate QR code function
+        async function generateQrCode() {
             if (!selectedPackage) {
                 showError('Please select a credit package');
                 return;
@@ -493,7 +486,7 @@
                     document.getElementById('paymentAmount').textContent = result.amount;
                     document.getElementById('upiId').textContent = result.upi_id;
                     document.getElementById('orderId').textContent = result.order_id;
-                    document.getElementById('creditsAmount').textContent = result.credits;
+                    document.getElementById('userEmail').textContent = result.user_email || 'Loading...';
                     
                     document.getElementById('qrDisplay').style.display = 'block';
                     document.getElementById('verificationSection').style.display = 'block';
@@ -508,7 +501,7 @@
             } finally {
                 showLoading(false);
             }
-        });
+        }
 
         // Handle verification form submission
         document.getElementById('verificationForm').addEventListener('submit', async (e) => {

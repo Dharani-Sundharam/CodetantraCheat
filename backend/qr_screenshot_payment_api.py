@@ -47,6 +47,7 @@ class QRPaymentResponse(BaseModel):
     order_id: str
     payment_reference: str
     expires_at: str
+    user_email: str
 
 class ScreenshotVerificationRequest(BaseModel):
     order_id: str
@@ -72,8 +73,8 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 def generate_upi_qr_code(amount: int, order_id: str, merchant_name: str, upi_id: str) -> str:
     """Generate UPI QR code with payment details"""
     
-    # UPI payment string format
-    upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&cu=INR&tn=CodeTantra Credits - Order {order_id}&tr={order_id}"
+    # UPI payment string format with amount included
+    upi_string = f"upi://pay?pa={upi_id}&pn={merchant_name}&am={amount}&cu=INR&tn=CodeTantra Credits Rs{amount} - Order {order_id}&tr={order_id}"
     
     # Generate QR code
     qr = qrcode.QRCode(
@@ -301,7 +302,8 @@ async def generate_qr_payment(
         amount=package.price,
         order_id=transaction.order_id,
         payment_reference=transaction.order_id,
-        expires_at=expires_at.isoformat()
+        expires_at=expires_at.isoformat(),
+        user_email=current_user.email
     )
 
 @router.post("/verify")
