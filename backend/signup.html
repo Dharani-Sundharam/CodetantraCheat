@@ -65,7 +65,20 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000';  // Change this to your API URL
+        const API_URL = 'https://codetantra-backend.onrender.com';
+        
+        // Check if server is running on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                if (response.ok) {
+                    console.log('Backend server is running');
+                }
+            } catch (error) {
+                console.log('Backend server is not running');
+                showMessage('Backend server is not running. Please start the server first.', 'error');
+            }
+        });
         
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();

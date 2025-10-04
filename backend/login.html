@@ -48,7 +48,20 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000';
+        const API_URL = 'https://codetantra-backend.onrender.com';
+        
+        // Check if server is running on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                if (response.ok) {
+                    console.log('Backend server is running');
+                }
+            } catch (error) {
+                console.log('Backend server is not running');
+                showMessage('Backend server is not running. Please start the server first.', 'error');
+            }
+        });
         
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -58,6 +71,12 @@
                 password: document.getElementById('password').value,
                 remember_me: document.getElementById('remember_me').checked
             };
+            
+            // Show loading state
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Logging in...';
+            submitBtn.disabled = true;
             
             try {
                 const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -76,10 +95,19 @@
                         window.location.href = data.user.is_admin ? 'admin.html' : 'dashboard.html';
                     }, 1000);
                 } else {
-                    showMessage(data.detail || 'Login failed', 'error');
+                    showMessage(data.detail || 'Login failed. Please check your credentials.', 'error');
                 }
             } catch (error) {
-                showMessage('Network error. Please try again.', 'error');
+                console.error('Login error:', error);
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showMessage('Cannot connect to server. Please check your internet connection.', 'error');
+                } else {
+                    showMessage('Network error. Please try again.', 'error');
+                }
+            } finally {
+                // Reset button state
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
         });
         
