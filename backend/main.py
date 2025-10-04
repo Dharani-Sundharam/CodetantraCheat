@@ -251,7 +251,8 @@ async def forgot_password(data: PasswordReset, db: Session = Depends(get_db)):
     
     # Create reset token and send email
     token = auth.create_verification_token(db, user.id, "password_reset")
-    email_service.send_password_reset_email(user.email, token, user.name)
+    # TODO: Implement email service
+    # email_service.send_password_reset_email(user.email, token, user.name)
     
     return {"message": "If the email exists, a password reset link has been sent."}
 
