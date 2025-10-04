@@ -17,6 +17,9 @@ import auth
 from models import User, Transaction, UsageLog
 from database import get_db
 
+# Import payment routers
+from qr_screenshot_payment_api import router as qr_payment_router
+
 # Initialize FastAPI app
 app = FastAPI(title="CodeTantra Automation API", version="1.0.0")
 
@@ -96,6 +99,9 @@ async def serve_html(filename: str):
         if os.path.exists(file_path):
             return FileResponse(file_path)
     raise HTTPException(status_code=404, detail="File not found")
+
+# Include payment routers
+app.include_router(qr_payment_router)
 
 # Initialize database on startup
 @app.on_event("startup")

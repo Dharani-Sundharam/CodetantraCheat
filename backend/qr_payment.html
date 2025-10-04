@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Payment - CodeTantra Automation</title>
+    <link rel="stylesheet" href="assets/style-dark.css">
+    <style>
+        .qr-payment-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .qr-payment-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .qr-payment-header h1 {
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+        
+        .qr-payment-header p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+        
+        .qr-payment-form {
+            background: var(--bg-dark-card);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border-dark);
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--border-dark);
+            border-radius: 8px;
+            background: var(--bg-dark-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: 'Times New Roman', Times, serif;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .package-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .package-card {
+            background: var(--bg-dark-secondary);
+            border: 2px solid var(--border-dark);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .package-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .package-card.selected {
+            border-color: var(--primary);
+            background: var(--bg-dark-hover);
+        }
+        
+        .package-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        
+        .package-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .package-credits {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+        
+        .btn-generate-qr {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-generate-qr:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        .btn-generate-qr:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .qr-display {
+            display: none;
+            text-align: center;
+            background: var(--bg-dark-card);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border-dark);
+            margin-top: 30px;
+        }
+        
+        .qr-code {
+            max-width: 300px;
+            margin: 20px auto;
+            border-radius: 10px;
+        }
+        
+        .payment-details {
+            background: var(--bg-dark-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .payment-details h3 {
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+        
+        .payment-details p {
+            margin: 8px 0;
+            color: var(--text-secondary);
+        }
+        
+        .verification-section {
+            display: none;
+            margin-top: 30px;
+            background: var(--bg-dark-card);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border-dark);
+        }
+        
+        .verification-form {
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid var(--border-dark);
+            border-radius: 8px;
+            background: var(--bg-dark-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 12px 15px;
+            border: 2px dashed var(--border-dark);
+            border-radius: 8px;
+            background: var(--bg-dark-secondary);
+            color: var(--text-secondary);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-label:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
+        }
+        
+        .btn-verify {
+            width: 100%;
+            padding: 12px 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-verify:hover {
+            background: var(--primary-dark);
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .status-success {
+            background: #44ff44;
+            color: white;
+        }
+        
+        .status-error {
+            background: #ff4444;
+            color: white;
+        }
+        
+        .status-warning {
+            background: #ffaa00;
+            color: white;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .upi-instructions {
+            background: var(--bg-dark-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .upi-instructions h4 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        
+        .upi-instructions ol {
+            color: var(--text-secondary);
+            padding-left: 20px;
+        }
+        
+        .upi-instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <div class="logo">CT</div>
+                <span class="brand-name">CodeTantra Automation</span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="help.html">Help</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="qr-payment-container">
+        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+        
+        <div class="qr-payment-header">
+            <h1>QR Code Payment</h1>
+            <p>Scan QR code with any UPI app and upload payment screenshot</p>
+        </div>
+
+        <div class="qr-payment-form">
+            <form id="qrPaymentForm">
+                <div class="form-group">
+                    <label for="username">Email Address</label>
+                    <input type="email" id="username" name="username" required 
+                           placeholder="Enter your registered email">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required 
+                           placeholder="Enter your password">
+                </div>
+
+                <div class="form-group">
+                    <label>Select Credit Package</label>
+                    <div class="package-grid" id="packageGrid">
+                        <!-- Packages will be loaded here -->
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-generate-qr" id="generateQrButton" disabled>
+                    Generate QR Code
+                </button>
+            </form>
+        </div>
+
+        <div class="qr-display" id="qrDisplay">
+            <h3>Scan QR Code to Pay</h3>
+            <img id="qrCodeImage" class="qr-code" alt="QR Code">
+            
+            <div class="payment-details">
+                <h3>Payment Details</h3>
+                <p><strong>Amount:</strong> Rs. <span id="paymentAmount">0</span></p>
+                <p><strong>UPI ID:</strong> <span id="upiId">ctautomationpro@paytm</span></p>
+                <p><strong>Order ID:</strong> <span id="orderId">-</span></p>
+                <p><strong>Credits:</strong> <span id="creditsAmount">0</span></p>
+            </div>
+
+            <div class="upi-instructions">
+                <h4>How to Pay:</h4>
+                <ol>
+                    <li>Open any UPI app (PhonePe, Google Pay, Paytm, etc.)</li>
+                    <li>Scan the QR code above</li>
+                    <li>Enter the exact amount shown</li>
+                    <li>Complete the payment</li>
+                    <li>Take a screenshot of the payment confirmation</li>
+                    <li>Upload the screenshot below with UPI reference number</li>
+                </ol>
+            </div>
+
+            <div class="verification-section" id="verificationSection">
+                <h3>Verify Payment</h3>
+                <p>After completing payment, upload your payment screenshot and enter UPI reference:</p>
+                
+                <form id="verificationForm" enctype="multipart/form-data">
+                    <div class="form-row">
+                        <input type="text" id="upiReference" placeholder="Enter UPI reference number (e.g., TXN123456789)" required>
+                    </div>
+                    
+                    <div class="file-input-wrapper">
+                        <input type="file" id="screenshotFile" class="file-input" accept="image/*" required>
+                        <label for="screenshotFile" class="file-input-label" id="fileLabel">
+                            📷 Click to upload payment screenshot
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-verify">Verify Payment</button>
+                </form>
+                
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://ctautomationpro.onrender.com';
+        let selectedPackage = null;
+        let packages = [];
+        let currentOrderId = null;
+
+        // Load credit packages
+        async function loadPackages() {
+            try {
+                const response = await fetch(`${API_URL}/api/qr-payment/packages`);
+                if (response.ok) {
+                    packages = await response.json();
+                    displayPackages();
+                } else {
+                    showError('Failed to load credit packages');
+                }
+            } catch (error) {
+                showError('Error loading packages: ' + error.message);
+            }
+        }
+
+        // Display packages
+        function displayPackages() {
+            const packageGrid = document.getElementById('packageGrid');
+            packageGrid.innerHTML = '';
+
+            packages.forEach(pkg => {
+                const packageCard = document.createElement('div');
+                packageCard.className = 'package-card';
+                packageCard.dataset.packageId = pkg.id;
+                
+                packageCard.innerHTML = `
+                    <div class="package-name">${pkg.name}</div>
+                    <div class="package-price">Rs. ${pkg.price}</div>
+                    <div class="package-credits">${pkg.credits} credits</div>
+                `;
+                
+                packageCard.addEventListener('click', () => selectPackage(pkg.id));
+                packageGrid.appendChild(packageCard);
+            });
+        }
+
+        // Select package
+        function selectPackage(packageId) {
+            // Remove previous selection
+            document.querySelectorAll('.package-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Select new package
+            const selectedCard = document.querySelector(`[data-package-id="${packageId}"]`);
+            selectedCard.classList.add('selected');
+            
+            selectedPackage = packages.find(pkg => pkg.id === packageId);
+            document.getElementById('generateQrButton').disabled = false;
+        }
+
+        // Handle QR generation form submission
+        document.getElementById('qrPaymentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedPackage) {
+                showError('Please select a credit package');
+                return;
+            }
+
+            const formData = {
+                package_id: selectedPackage.id,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                showLoading(true);
+                hideMessages();
+
+                const response = await fetch(`${API_URL}/api/qr-payment/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Display QR code
+                    currentOrderId = result.order_id;
+                    document.getElementById('qrCodeImage').src = result.qr_code;
+                    document.getElementById('paymentAmount').textContent = result.amount;
+                    document.getElementById('upiId').textContent = result.upi_id;
+                    document.getElementById('orderId').textContent = result.order_id;
+                    document.getElementById('creditsAmount').textContent = result.credits;
+                    
+                    document.getElementById('qrDisplay').style.display = 'block';
+                    document.getElementById('verificationSection').style.display = 'block';
+                    
+                    showSuccess('QR code generated! Scan with any UPI app to pay.');
+                    
+                } else {
+                    showError(result.detail || 'Failed to generate QR code');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // Handle verification form submission
+        document.getElementById('verificationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const upiReference = document.getElementById('upiReference').value.trim();
+            const screenshotFile = document.getElementById('screenshotFile').files[0];
+            
+            if (!upiReference) {
+                showError('Please enter UPI reference number');
+                return;
+            }
+            
+            if (!screenshotFile) {
+                showError('Please upload payment screenshot');
+                return;
+            }
+
+            if (!currentOrderId) {
+                showError('No active payment session');
+                return;
+            }
+
+            try {
+                showLoading(true);
+
+                const formData = new FormData();
+                formData.append('order_id', currentOrderId);
+                formData.append('upi_reference', upiReference);
+                formData.append('screenshot', screenshotFile);
+
+                const response = await fetch(`${API_URL}/api/qr-payment/verify`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.verified) {
+                    showSuccess(`Payment verified! ${result.credits_added} credits added to your account.`);
+                    document.getElementById('verificationSection').style.display = 'none';
+                } else {
+                    showError(result.message || 'Payment verification failed');
+                }
+            } catch (error) {
+                showError('Error verifying payment: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // File input change handler
+        document.getElementById('screenshotFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const label = document.getElementById('fileLabel');
+            
+            if (file) {
+                label.textContent = `📷 ${file.name}`;
+            } else {
+                label.textContent = '📷 Click to upload payment screenshot';
+            }
+        });
+
+        // Utility functions
+        function showError(message) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message status-error';
+            statusDiv.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message status-success';
+            statusDiv.style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('statusMessage').style.display = 'none';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('generateQrButton').disabled = show;
+        }
+
+        // Load packages on page load
+        loadPackages();
+    </script>
+</body>
+</html>

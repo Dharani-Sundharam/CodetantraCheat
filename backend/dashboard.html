@@ -55,6 +55,17 @@
                     <p class="download-note">Latest version: v1.0.0</p>
                 </div>
 
+                <!-- Payment Card -->
+                <div class="dashboard-card">
+                    <h2>Buy Credits</h2>
+                    <p>Purchase credits to continue using the automation tool</p>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="qrPayment()" class="btn btn-primary">
+                            QR Payment
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Usage Stats Card -->
                 <div class="dashboard-card">
                     <h2>Usage Statistics</h2>
@@ -162,6 +173,10 @@
 
         function downloadApp() {
             window.open('https://www.mediafire.com/file/4zhdhoo9ewjlo6d/CodetantraAutomationPro.7z/file', '_blank');
+        }
+
+        function qrPayment() {
+            window.location.href = 'qr_payment.html';
         }
 
         function logout() {
