@@ -7,7 +7,7 @@ import requests
 import json
 
 def test_simple():
-    base_url = "https://codetantra-backend.onrender.com"
+    base_url = "https://ctautomationpro.onrender.com"
     
     print("Testing simple endpoints...")
     print("=" * 40)
