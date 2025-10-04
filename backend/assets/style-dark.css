@@ -36,7 +36,7 @@ body {
     min-height: 100vh;
 }
 
-/* Letter Glitch Background */
+/* Background Effects */
 body::before {
     content: '';
     position: fixed;
@@ -46,6 +46,18 @@ body::before {
     height: 100%;
     z-index: -2;
     background: #000000;
+}
+
+/* Squares Background Canvas */
+.squares-canvas {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
 }
 
 /* Ensure content is above the glitch effect */

@@ -249,21 +249,27 @@ class LetterGlitch {
 
 // Initialize letter glitch background when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Apply to body or specific container
-    const body = document.body;
+    // Check if we should use letter glitch (default)
+    const useLetters = !window.location.search.includes('bg=squares') && 
+                      localStorage.getItem('backgroundType') !== 'squares';
     
-    // Create letter glitch instance
-    const letterGlitch = new LetterGlitch({
-        glitchColors: ['#2b4539', '#61dca3', '#61b3dc'],
-        glitchSpeed: 50,
-        centerVignette: false,
-        outerVignette: true,
-        smooth: true
-    });
-    
-    // Initialize the effect
-    letterGlitch.init(body);
-    
-    // Store reference for potential cleanup
-    window.letterGlitch = letterGlitch;
+    if (useLetters) {
+        // Apply to body or specific container
+        const body = document.body;
+        
+        // Create letter glitch instance
+        const letterGlitch = new LetterGlitch({
+            glitchColors: ['#2b4539', '#61dca3', '#61b3dc'],
+            glitchSpeed: 50,
+            centerVignette: false,
+            outerVignette: true,
+            smooth: true
+        });
+        
+        // Initialize the effect
+        letterGlitch.init(body);
+        
+        // Store reference for potential cleanup
+        window.letterGlitch = letterGlitch;
+    }
 });

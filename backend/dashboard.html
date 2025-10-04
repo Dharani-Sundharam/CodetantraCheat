@@ -6,6 +6,7 @@
     <title>Dashboard - CodeTantra Automation</title>
     <link rel="stylesheet" href="assets/style-dark.css">
     <script src="assets/letter-glitch.js" defer></script>
+    <script src="assets/squares-background.js" defer></script>
 </head>
 <body>
     <nav class="navbar">
@@ -15,6 +16,7 @@
                 <span class="brand-name">CodeTantra Automation</span>
             </div>
             <div class="nav-links">
+                <button onclick="toggleBackground()" class="btn btn-secondary" style="margin-right: 10px;">Switch BG</button>
                 <span id="userEmail" class="user-email"></span>
                 <button onclick="logout()" class="btn btn-outline">Logout</button>
             </div>
@@ -345,6 +347,15 @@
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'login.html';
+        }
+
+        function toggleBackground() {
+            const currentBg = localStorage.getItem('backgroundType') || 'letters';
+            const newBg = currentBg === 'letters' ? 'squares' : 'letters';
+            localStorage.setItem('backgroundType', newBg);
+            
+            // Reload page to apply new background
+            window.location.reload();
         }
 
         // Admin functionality
