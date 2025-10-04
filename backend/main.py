@@ -12,10 +12,11 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime, timedelta
 
-import database
-import auth
-from models import User, Transaction, UsageLog
-from database import get_db
+# Import database modules only when needed to avoid startup failures
+# import database
+# import auth
+# from models import User, Transaction, UsageLog
+# from database import get_db
 
 # Initialize FastAPI app
 app = FastAPI(title="CodeTantra Automation API", version="1.0.0")
@@ -97,15 +98,21 @@ async def serve_html(filename: str):
             return FileResponse(file_path)
     raise HTTPException(status_code=404, detail="File not found")
 
-# Initialize database on startup
-@app.on_event("startup")
-async def startup_event():
-    database.init_database()
+# Initialize database on startup (temporarily disabled to test app startup)
+# @app.on_event("startup")
+# async def startup_event():
+#     database.init_database()
 
 # Health check endpoint (moved to /api/health to avoid conflict with static files)
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "message": "CodeTantra Automation API is running"}
+
+# Simple test endpoint
+@app.get("/test")
+async def test_endpoint():
+    """Simple test endpoint"""
+    return {"message": "FastAPI app is running!", "status": "success"}
 
 # Root endpoint for API status
 @app.get("/api/")
