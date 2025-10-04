@@ -15,8 +15,8 @@ sys.path.insert(0, str(backend_dir))
 
 # Set default environment variables if not already set
 if not os.getenv("DATABASE_URL"):
-    # Use the PostgreSQL URL from your previous setup
-    os.environ["DATABASE_URL"] = "postgresql://admin:l9F1rk7UXCmY8UnOFcYeUiULbJ1kHeYO@dpg-d3fv09vdiees73bh8g2g-a.oregon-postgres.render.com/codetantradb"
+    # Use default local PostgreSQL URL for development
+    os.environ["DATABASE_URL"] = "postgresql://codetantra_user:codetantra123@localhost:5432/codetantra_local"
 
 if not os.getenv("JWT_SECRET_KEY"):
     os.environ["JWT_SECRET_KEY"] = "your-super-secret-key-change-this-in-production"

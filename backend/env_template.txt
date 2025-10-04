@@ -3,9 +3,8 @@
 
 # PostgreSQL Database URL (REQUIRED)
 # Format: postgresql://username:password@host:port/database_name
-# Production URL (for reference):
-# DATABASE_URL=postgresql://admin:l9F1rk7UXCmY8UnOFcYeUiULbJ1kHeYO@dpg-d3fv09vdiees73bh8g2g-a.oregon-postgres.render.com/codetantradb
-# Local development URL:
+# This will be automatically set by Render from the database service
+# For local development, use:
 DATABASE_URL=postgresql://codetantra_user:codetantra123@localhost:5432/codetantra_local
 
 # JWT Configuration

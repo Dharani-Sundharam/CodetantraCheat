@@ -30,10 +30,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ## Database Configuration
 
-The server is configured to use PostgreSQL. The DATABASE_URL is automatically set to:
-```
-postgresql://admin:l9F1rk7UXCmY8UnOFcYeUiULbJ1kHeYO@dpg-d3fv09vdiees73bh8g2g-a.oregon-postgres.render.com/codetantradb
-```
+The server is configured to use PostgreSQL. The DATABASE_URL is automatically set by Render from the database service environment variables.
 
 ## Troubleshooting
 
