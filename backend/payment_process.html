@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Process - CodeTantra Automation</title>
+    <link rel="stylesheet" href="assets/style-dark.css">
+    <style>
+        .payment-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .payment-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .payment-header h1 {
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+        
+        .payment-header p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+        
+        .payment-card {
+            background: var(--bg-dark-card);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border-dark);
+            margin-bottom: 30px;
+        }
+        
+        .package-info {
+            background: var(--bg-dark-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .package-info h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .package-details {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+        
+        .package-details div {
+            text-align: center;
+        }
+        
+        .package-details .label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .package-details .value {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .qr-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .qr-code {
+            max-width: 300px;
+            margin: 20px auto;
+            border-radius: 10px;
+            border: 3px solid var(--text-primary);
+        }
+        
+        .payment-details {
+            background: var(--bg-dark-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .payment-details h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        
+        .payment-details p {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .payment-details strong {
+            color: var(--primary);
+        }
+        
+        .verification-section {
+            background: var(--bg-dark-secondary);
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .verification-section h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 15px 20px;
+            border: 2px dashed var(--border-dark);
+            border-radius: 8px;
+            background: var(--bg-dark-card);
+            color: var(--text-secondary);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-label:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-verify {
+            width: 100%;
+            padding: 15px 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-verify:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-verify:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+            font-weight: 600;
+        }
+        
+        .status-message.success {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }
+        
+        .status-message.error {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color: var(--primary);
+        }
+        
+        .back-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            margin-top: 20px;
+            font-size: 1.1rem;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .instructions {
+            background: var(--bg-dark-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .instructions h4 {
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            color: var(--text-secondary);
+            padding-left: 20px;
+        }
+        
+        .instructions ol li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="payment-header">
+            <h1>Complete Your Payment</h1>
+            <p>Scan QR code and upload payment screenshot to add credits to your account</p>
+        </div>
+
+        <div class="payment-card">
+            <!-- Package Information -->
+            <div class="package-info">
+                <h3 id="packageName">Package Selected</h3>
+                <div class="package-details">
+                    <div>
+                        <div class="label">Amount</div>
+                        <div class="value" id="packageAmount">Rs. 0</div>
+                    </div>
+                    <div>
+                        <div class="label">Credits</div>
+                        <div class="value" id="packageCredits">0</div>
+                    </div>
+                    <div>
+                        <div class="label">Credits for</div>
+                        <div class="value" id="userEmail">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Code Section -->
+            <div class="qr-section">
+                <h3>Scan QR Code to Pay</h3>
+                <img id="qrCodeImage" class="qr-code" alt="QR Code">
+                
+                <div class="payment-details">
+                    <h3>Payment Details</h3>
+                    <p><strong>UPI ID:</strong> <span id="upiId">-</span></p>
+                    <p><strong>Order ID:</strong> <span id="orderId">-</span></p>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions">
+                <h4>How to Pay:</h4>
+                <ol>
+                    <li>Open any UPI app (PhonePe, Google Pay, Paytm, etc.)</li>
+                    <li>Scan the QR code above</li>
+                    <li>Complete the payment</li>
+                    <li>Take a screenshot of the payment confirmation</li>
+                    <li>Upload the screenshot below to verify payment</li>
+                </ol>
+            </div>
+
+            <!-- Verification Section -->
+            <div class="verification-section">
+                <h3>Verify Payment</h3>
+                <p>Upload your payment screenshot to verify and add credits to your account:</p>
+                
+                <form id="verificationForm" enctype="multipart/form-data">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="screenshotFile" class="file-input" accept="image/*" required>
+                        <label for="screenshotFile" class="file-input-label" id="fileLabel">
+                            📷 Click to upload payment screenshot
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-verify" id="verifyButton">Verify Payment</button>
+                </form>
+                
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+
+            <div class="loading" id="loading">
+                <p>Processing payment verification...</p>
+            </div>
+        </div>
+
+        <a href="qr_payment.html" class="back-link">← Back to Package Selection</a>
+    </div>
+
+    <script>
+        const API_URL = 'https://ctautomationpro.onrender.com';
+        let paymentData = null;
+        let currentOrderId = null;
+
+        // Load payment data from session storage
+        document.addEventListener('DOMContentLoaded', function() {
+            const storedData = sessionStorage.getItem('paymentData');
+            console.log('Stored payment data:', storedData);
+            
+            if (!storedData) {
+                showError('No payment data found. Please select a package first.');
+                setTimeout(() => {
+                    window.location.href = 'qr_payment.html';
+                }, 3000);
+                return;
+            }
+
+            try {
+                paymentData = JSON.parse(storedData);
+                console.log('Parsed payment data:', paymentData);
+                loadPaymentData();
+            } catch (error) {
+                console.error('Error parsing payment data:', error);
+                showError('Invalid payment data. Please try again.');
+                setTimeout(() => {
+                    window.location.href = 'qr_payment.html';
+                }, 3000);
+            }
+        });
+
+        function loadPaymentData() {
+            // Display package information
+            document.getElementById('packageName').textContent = paymentData.package_name;
+            document.getElementById('packageAmount').textContent = `Rs. ${paymentData.amount}`;
+            document.getElementById('packageCredits').textContent = paymentData.package_credits;
+            document.getElementById('userEmail').textContent = paymentData.user_email;
+
+            // Display QR code
+            console.log('QR Code data:', paymentData.qr_code);
+            console.log('QR Code length:', paymentData.qr_code ? paymentData.qr_code.length : 'undefined');
+            
+            // Check if QR code already has data:image prefix
+            if (paymentData.qr_code.startsWith('data:image')) {
+                document.getElementById('qrCodeImage').src = paymentData.qr_code;
+            } else {
+                document.getElementById('qrCodeImage').src = `data:image/png;base64,${paymentData.qr_code}`;
+            }
+            
+            document.getElementById('upiId').textContent = paymentData.upi_id;
+            document.getElementById('orderId').textContent = paymentData.order_id;
+
+            currentOrderId = paymentData.order_id;
+        }
+
+        // Handle verification form submission
+        document.getElementById('verificationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const screenshotFile = document.getElementById('screenshotFile').files[0];
+            
+            if (!screenshotFile) {
+                showError('Please upload payment screenshot');
+                return;
+            }
+
+            if (!currentOrderId) {
+                showError('No active payment session');
+                return;
+            }
+
+            // Get token from localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showError('Please log in first');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                showLoading(true);
+                hideMessages();
+
+                const formData = new FormData();
+                formData.append('order_id', currentOrderId);
+                formData.append('screenshot', screenshotFile);
+                
+                console.log('Sending verification request:', {
+                    order_id: currentOrderId,
+                    screenshot_name: screenshotFile.name,
+                    screenshot_size: screenshotFile.size
+                });
+
+                const response = await fetch(`${API_URL}/api/qr-payment/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', response.status, errorText);
+                    showError(`Server error: ${response.status} - ${errorText}`);
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (result.verified) {
+                    showSuccess(`Payment successful! ${result.credits_added} credits have been added to your account.`);
+                    document.getElementById('verifyButton').disabled = true;
+                    document.getElementById('verifyButton').textContent = 'Payment Verified ✓';
+                    
+                    // Clear session storage
+                    sessionStorage.removeItem('paymentData');
+                    
+                    // Redirect to dashboard after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 3000);
+                } else {
+                    if (result.status === 'wrong_upi_id') {
+                        showError(`${result.message} Detected UPI ID: ${result.extracted_upi_id}`);
+                    } else if (result.status === 'duplicate_upi_id') {
+                        showError(result.message);
+                    } else {
+                        showError(result.message || 'Payment verification failed');
+                    }
+                }
+            } catch (error) {
+                showError('Error verifying payment: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // File input change handler
+        document.getElementById('screenshotFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const label = document.getElementById('fileLabel');
+            if (file) {
+                label.textContent = `📷 ${file.name}`;
+            } else {
+                label.textContent = '📷 Click to upload payment screenshot';
+            }
+        });
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('verifyButton').disabled = show;
+        }
+
+        function showSuccess(message) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message success';
+            statusDiv.style.display = 'block';
+        }
+
+        function showError(message) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message error';
+            statusDiv.style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('statusMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
