@@ -436,6 +436,14 @@
         document.getElementById('manualForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Get token from localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showError('Please log in first');
+                window.location.href = 'login.html';
+                return;
+            }
+            
             const upiTransactionId = document.getElementById('upiTransactionId').value.trim();
             
             if (!upiTransactionId) {
