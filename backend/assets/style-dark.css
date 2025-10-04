@@ -344,6 +344,24 @@ body {
     margin: 0;
 }
 
+/* Dashboard Download Card */
+.dashboard-card.download-card {
+    padding: 30px;
+    margin-bottom: 20px;
+}
+
+.dashboard-card.download-card h2 {
+    margin-bottom: 15px;
+}
+
+.dashboard-card.download-card p {
+    margin-bottom: 20px;
+}
+
+.dashboard-card.download-card .btn {
+    margin-bottom: 15px;
+}
+
 /* Auth Pages */
 .auth-container {
     min-height: 100vh;
