@@ -213,6 +213,39 @@ class APIClient:
         
         return credits >= required
     
+    def get_license_status(self) -> Optional[Dict[str, Any]]:
+        """
+        Get license status for the current user
+        Returns: license status dict or None if not available
+        """
+        try:
+            response = self.session.get(f"{self.base_url}/api/user/license")
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                # If license endpoint doesn't exist, assume valid
+                return {'valid': True, 'message': 'License check not implemented'}
+        except requests.exceptions.RequestException:
+            # If license check fails, assume valid for backward compatibility
+            return {'valid': True, 'message': 'License check unavailable'}
+    
+    def get_encryption_key(self) -> Optional[str]:
+        """
+        Get encryption key from server for decrypting modules
+        Returns: encryption key string or None if not available
+        """
+        try:
+            response = self.session.get(f"{self.base_url}/api/encryption/key")
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('key')
+            else:
+                return None
+        except requests.exceptions.RequestException:
+            return None
+    
     def ping(self) -> bool:
         """
         Check if API is reachable

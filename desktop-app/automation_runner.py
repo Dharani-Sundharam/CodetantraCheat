@@ -129,10 +129,23 @@ class AutomationRunner:
             self.log("Starting CodeTantra automation...")
             
             try:
-                from codetantra_playwright import CodeTantraPlaywrightAutomation
+                try:
+                    from secure_loader import load_encrypted_module
+                    token = self.config_manager.get_token()
+                    if token:
+                        playwright_module = load_encrypted_module('codetantra_playwright', token)
+                        CodeTantraPlaywrightAutomation = playwright_module.CodeTantraPlaywrightAutomation
+                    else:
+                        raise Exception("No authentication token available")
+                except Exception:
+                    from codetantra_playwright import CodeTantraPlaywrightAutomation
                 
                 # Create automation instance
-                automation = CodeTantraPlaywrightAutomation(auto_login=False)
+                automation = CodeTantraPlaywrightAutomation(
+                    auto_login=False,
+                    api_client=self.api_client,
+                    config_manager=self.config_manager
+                )
                 
                 # Set automation runner reference for credit deduction
                 automation.automation_runner = self
@@ -416,10 +429,23 @@ TARGET_ACCOUNT = {{
             
             # Import and run the automation
             try:
-                from codetantra_playwright import CodeTantraPlaywrightAutomation
+                try:
+                    from secure_loader import load_encrypted_module
+                    token = self.config_manager.get_token()
+                    if token:
+                        playwright_module = load_encrypted_module('codetantra_playwright', token)
+                        CodeTantraPlaywrightAutomation = playwright_module.CodeTantraPlaywrightAutomation
+                    else:
+                        raise Exception("No authentication token available")
+                except Exception:
+                    from codetantra_playwright import CodeTantraPlaywrightAutomation
                 
                 # Create automation instance
-                automation = CodeTantraPlaywrightAutomation(auto_login=False)
+                automation = CodeTantraPlaywrightAutomation(
+                    auto_login=False,
+                    api_client=self.api_client,
+                    config_manager=self.config_manager
+                )
                 
                 # Set automation runner reference for credit deduction
                 automation.automation_runner = self
