@@ -188,12 +188,8 @@ class SquaresBackground {
 
 // Initialize squares background when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if we should use squares (login, signup, dashboard pages)
-    const currentPath = window.location.pathname;
-    const useSquares = currentPath.includes('login.html') || 
-                      currentPath.includes('signup.html') || 
-                      currentPath.includes('dashboard.html') ||
-                      window.location.search.includes('bg=squares');
+    // Use squares on all pages by default
+    const useSquares = true;
     
     if (useSquares) {
         // Wait a bit for page to fully load

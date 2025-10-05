@@ -249,12 +249,8 @@ class LetterGlitch {
 
 // Initialize letter glitch background when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if we should use letter glitch (all pages except login, signup, dashboard)
-    const currentPath = window.location.pathname;
-    const useLetters = !currentPath.includes('login.html') && 
-                      !currentPath.includes('signup.html') && 
-                      !currentPath.includes('dashboard.html') &&
-                      !window.location.search.includes('bg=squares');
+    // Disabled by default - using squares everywhere
+    const useLetters = false;
     
     if (useLetters) {
         // Wait a bit for page to fully load
