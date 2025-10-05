@@ -6,6 +6,310 @@
     <title>Dashboard - CodeTantra Automation</title>
     <link rel="stylesheet" href="assets/style-dark.css">
     <script src="assets/squares-background.js" defer></script>
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .admin-header h1 {
+            margin: 0;
+            font-size: 32px;
+            color: white;
+        }
+
+        .admin-header p {
+            margin: 10px 0 0 0;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+        }
+
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .admin-stat-card {
+            background: rgba(36, 36, 36, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .admin-stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .admin-stat-card .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .admin-stat-card .stat-label {
+            font-size: 14px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .admin-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .admin-search-bar {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            max-width: 600px;
+        }
+
+        .admin-search-bar input {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(36, 36, 36, 0.5);
+            color: white;
+            font-size: 14px;
+        }
+
+        .admin-search-bar input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .admin-search-bar select {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(36, 36, 36, 0.5);
+            color: white;
+            cursor: pointer;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .admin-table-container {
+            background: rgba(36, 36, 36, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .admin-table thead {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .admin-table th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .admin-table td {
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
+        }
+
+        .admin-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .admin-table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .transaction-id-badge {
+            font-family: 'Courier New', monospace;
+            background: rgba(102, 126, 234, 0.2);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            display: inline-block;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-badge.pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .status-badge.failed {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .admin-pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .admin-pagination button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(36, 36, 36, 0.5);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .admin-pagination button:hover:not(:disabled) {
+            background: #667eea;
+            border-color: #667eea;
+        }
+
+        .admin-pagination button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .admin-pagination .page-info {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* User Dashboard Styles */
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .user-card {
+            background: rgba(36, 36, 36, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .user-card h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+
+        .credits-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .credits-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+        }
+
+        .credits-label {
+            color: #94a3b8;
+            font-size: 16px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            color: #e2e8f0;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -23,134 +327,133 @@
 
     <div class="dashboard-container">
         <div class="container">
-            <h1>Dashboard</h1>
-            
-            <div class="dashboard-grid">
-                <!-- Credits Card -->
-                <div class="dashboard-card credits-card">
-                    <h2>Your Credits</h2>
-                    <div class="credits-display">
-                        <span id="creditsBalance" class="credits-number">0</span>
-                        <span class="credits-label">credits</span>
+            <!-- User Dashboard -->
+            <div id="userDashboard">
+                <h1 style="margin-bottom: 30px; font-size: 36px;">Welcome Back!</h1>
+                
+                <div class="user-grid">
+                    <!-- Credits Card -->
+                    <div class="user-card">
+                        <h2>Your Credits</h2>
+                        <div class="credits-display">
+                            <span id="creditsBalance" class="credits-number">0</span>
+                            <span class="credits-label">credits</span>
+                        </div>
+                        <p style="color: #94a3b8; text-align: center; font-size: 14px;">Each code completion uses 5 credits, other problems use 3 credits</p>
                     </div>
-                    <p class="credits-info">Each code completion uses 5 credits, other problems use 3 credits</p>
-                </div>
 
-                <!-- Referral Card -->
-                <div class="dashboard-card">
-                    <h2>Refer Friends</h2>
-                    <p>Share your referral code and earn 70 credits for each signup!</p>
-                    <div class="referral-code-box">
-                        <input type="text" id="referralCode" readonly>
-                        <button onclick="copyReferralCode()" class="btn btn-primary">Copy</button>
+                    <!-- Referral Card -->
+                    <div class="user-card">
+                        <h2>Refer Friends</h2>
+                        <p style="color: #94a3b8; margin-bottom: 20px;">Share your referral code and earn 70 credits for each signup!</p>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="referralCode" readonly style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3); color: white;">
+                            <button onclick="copyReferralCode()" class="btn btn-primary">Copy</button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Download Card -->
-                <div class="dashboard-card download-card">
-                    <h2>Desktop Application</h2>
-                    <p>Download the automation tool to start solving problems</p>
-                    <button onclick="downloadApp()" class="btn btn-primary btn-large">
-                        Download for Windows
-                    </button>
-                    <p class="download-note">Latest version: v1.0.0</p>
-                </div>
+                    <!-- Download Card -->
+                    <div class="user-card">
+                        <h2>Desktop Application</h2>
+                        <p style="color: #94a3b8; margin-bottom: 20px;">Download the automation tool to start solving problems</p>
+                        <button onclick="downloadApp()" class="btn btn-primary" style="width: 100%; padding: 12px;">
+                            Download for Windows
+                        </button>
+                        <p style="color: #64748b; font-size: 12px; margin-top: 10px; text-align: center;">Latest version: v1.0.0</p>
+                    </div>
 
-                <!-- Payment Card -->
-                <div class="dashboard-card">
-                    <h2>Buy Credits</h2>
-                    <p>Purchase credits to continue using the automation tool</p>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button onclick="qrPayment()" class="btn btn-primary">
+                    <!-- Payment Card -->
+                    <div class="user-card">
+                        <h2>Buy Credits</h2>
+                        <p style="color: #94a3b8; margin-bottom: 20px;">Purchase credits to continue using the automation tool</p>
+                        <button onclick="qrPayment()" class="btn btn-primary" style="width: 100%; padding: 12px;">
                             QR Payment
+                        </button>
+                    </div>
+
+                    <!-- Usage Stats Card -->
+                    <div class="user-card">
+                        <h2>Usage Statistics</h2>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                            <div style="text-align: center;">
+                                <span id="totalProblems" style="display: block; font-size: 32px; font-weight: bold; color: #667eea;">0</span>
+                                <span style="color: #94a3b8; font-size: 14px;">Problems Solved</span>
+                            </div>
+                            <div style="text-align: center;">
+                                <span id="creditsUsed" style="display: block; font-size: 32px; font-weight: bold; color: #667eea;">0</span>
+                                <span style="color: #94a3b8; font-size: 14px;">Credits Used</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction History -->
+                <div style="margin-top: 40px;">
+                    <div class="section-header">
+                        <h2>Recent Transactions</h2>
+                        <a href="transaction_history.html" class="btn btn-primary">View All</a>
+                    </div>
+                    <div id="recentTransactions" class="admin-table-container">
+                        <div class="loading" style="text-align: center; padding: 40px;">
+                            <div class="loading-spinner"></div>
+                            <p style="color: #94a3b8; margin-top: 10px;">Loading transactions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="adminDashboard" style="display: none;">
+                <div class="admin-header">
+                    <h1>🔐 Admin Dashboard</h1>
+                    <p>Manage all user transactions and monitor system activity</p>
+                </div>
+
+                <!-- Admin Stats -->
+                <div class="admin-stats">
+                    <div class="admin-stat-card">
+                        <span id="adminTotalTransactions" class="stat-value">0</span>
+                        <span class="stat-label">Total Transactions</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="adminSuccessfulTransactions" class="stat-value">0</span>
+                        <span class="stat-label">Successful</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="adminPendingTransactions" class="stat-value">0</span>
+                        <span class="stat-label">Pending</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="adminTotalRevenue" class="stat-value">₹0</span>
+                        <span class="stat-label">Total Revenue</span>
+                    </div>
+                </div>
+
+                <!-- Admin Controls -->
+                <div class="admin-controls">
+                    <div class="admin-search-bar">
+                        <input type="text" id="adminSearchInput" placeholder="Search UPI Transaction ID or User Email...">
+                        <select id="adminStatusFilter">
+                            <option value="">All Status</option>
+                            <option value="success">Success</option>
+                            <option value="pending">Pending</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="applyAdminFilters()">Search</button>
+                    </div>
+                    <div class="admin-actions">
+                        <button class="btn btn-secondary" onclick="refreshAdminData()">
+                            <span>🔄</span> Refresh
+                        </button>
+                        <button class="btn btn-primary" onclick="exportTransactions()">
+                            <span>📥</span> Export CSV
                         </button>
                     </div>
                 </div>
 
-                <!-- Usage Stats Card -->
-                <div class="dashboard-card">
-                    <h2>Usage Statistics</h2>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-value" id="totalProblems">0</span>
-                            <span class="stat-label">Problems Solved</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="creditsUsed">0</span>
-                            <span class="stat-label">Credits Used</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Transaction History -->
-            <div class="dashboard-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2>Transaction History</h2>
-                    <a href="transaction_history.html" class="btn btn-primary">View All Transactions</a>
-                </div>
-                <div id="recentTransactions">
-                    <div class="loading">Loading recent transactions...</div>
-                </div>
-            </div>
-
-            <!-- Admin Transaction Management -->
-            <div class="dashboard-section" id="adminSection" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2>Admin - All UPI Transaction IDs</h2>
-                    <div>
-                        <button class="btn btn-secondary" onclick="refreshAdminData()">Refresh</button>
-                        <button class="btn btn-primary" onclick="exportTransactions()">Export CSV</button>
-                    </div>
-                </div>
-                
-                <!-- Admin Stats -->
-                <div class="stats-grid" id="adminStats" style="margin-bottom: 20px;">
-                    <div class="stat-card">
-                        <div class="value" id="adminTotalTransactions">0</div>
-                        <div class="label">Total Transactions</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="value" id="adminSuccessfulTransactions">0</div>
-                        <div class="label">Successful</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="value" id="adminPendingTransactions">0</div>
-                        <div class="label">Pending</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="value" id="adminTotalRevenue">₹0</div>
-                        <div class="label">Total Revenue</div>
-                    </div>
-                </div>
-
-                <!-- Admin Filters -->
-                <div class="filters" style="margin-bottom: 20px;">
-                    <h3>Filters & Search</h3>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="adminStatusFilter">Status</label>
-                            <select id="adminStatusFilter">
-                                <option value="">All Status</option>
-                                <option value="success">Success</option>
-                                <option value="pending">Pending</option>
-                                <option value="failed">Failed</option>
-                            </select>
-                        </div>
-                        <div class="filter-group" style="flex: 1; min-width: 200px;">
-                            <label for="adminSearchInput">Search UPI Transaction ID</label>
-                            <input type="text" id="adminSearchInput" placeholder="Enter UPI Transaction ID...">
-                        </div>
-                        <div class="filter-group">
-                            <label>&nbsp;</label>
-                            <button class="btn btn-primary" onclick="applyAdminFilters()">Apply Filters</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Admin Transactions Table -->
-                <div class="table-container">
-                    <table class="usage-table" id="adminTransactionsTable">
+                <div class="admin-table-container">
+                    <table class="admin-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -160,44 +463,25 @@
                                 <th>Amount</th>
                                 <th>Credits</th>
                                 <th>Status</th>
-                                <th>Created</th>
+                                <th>Date</th>
                             </tr>
                         </thead>
                         <tbody id="adminTransactionsBody">
                             <tr>
-                                <td colspan="8" class="loading">Loading admin transactions...</td>
+                                <td colspan="8" style="text-align: center; padding: 40px;">
+                                    <div class="loading-spinner"></div>
+                                    <p style="color: #94a3b8; margin-top: 10px;">Loading transactions...</p>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <!-- Admin Pagination -->
-                <div class="pagination" id="adminPagination" style="display: none;">
-                    <button onclick="previousAdminPage()" id="adminPrevBtn">Previous</button>
-                    <span id="adminPageInfo">Page 1 of 1</span>
-                    <button onclick="nextAdminPage()" id="adminNextBtn">Next</button>
-                </div>
-            </div>
-
-            <!-- Usage History -->
-            <div class="dashboard-section">
-                <h2>Recent Activity</h2>
-                <div class="table-container">
-                    <table class="usage-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Problem Type</th>
-                                <th>Status</th>
-                                <th>Credits Used</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usageHistory">
-                            <tr>
-                                <td colspan="4" class="no-data">No activity yet</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="admin-pagination" id="adminPagination" style="display: none;">
+                    <button onclick="previousAdminPage()" id="adminPrevBtn">← Previous</button>
+                    <span class="page-info" id="adminPageInfo">Page 1 of 1</span>
+                    <button onclick="nextAdminPage()" id="adminNextBtn">Next →</button>
                 </div>
             </div>
         </div>
@@ -214,7 +498,18 @@
 
         document.getElementById('userEmail').textContent = user.email;
 
-        async function loadDashboard() {
+        // Check if user is admin
+        const isAdmin = user.email === 'admin@codetantra.ac.in';
+
+        if (isAdmin) {
+            document.getElementById('userDashboard').style.display = 'none';
+            document.getElementById('adminDashboard').style.display = 'block';
+            loadAdminDashboard();
+        } else {
+            loadUserDashboard();
+        }
+
+        async function loadUserDashboard() {
             try {
                 const headers = {
                     'Authorization': `Bearer ${token}`,
@@ -231,34 +526,13 @@
                 const historyRes = await fetch(`${API_URL}/api/user/usage-history`, { headers });
                 if (historyRes.ok) {
                     const history = await historyRes.json();
-                    displayUsageHistory(history.logs);
                     updateStats(history.logs);
                 }
 
-                // Load recent transactions
                 await loadRecentTransactions();
-                
-                // Load admin transactions if user is admin
-                if (user.email === 'admin@codetantra.ac.in') {
-                    await loadAdminTransactions();
-                }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
             }
-        }
-
-        function displayUsageHistory(logs) {
-            const tbody = document.getElementById('usageHistory');
-            if (logs.length === 0) return;
-
-            tbody.innerHTML = logs.slice(0, 10).map(log => `
-                <tr>
-                    <td>${new Date(log.created_at).toLocaleString()}</td>
-                    <td>${log.problem_type}</td>
-                    <td><span class="status ${log.success ? 'success' : 'failed'}">${log.success ? 'Success' : 'Failed'}</span></td>
-                    <td>${log.credits_used}</td>
-                </tr>
-            `).join('');
         }
 
         function updateStats(logs) {
@@ -271,24 +545,18 @@
 
         async function loadRecentTransactions() {
             try {
-                const token = localStorage.getItem('token');
                 const response = await fetch(`${API_URL}/api/qr-payment/history?page=1&limit=5`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const data = await response.json();
                 displayRecentTransactions(data.transactions);
-
             } catch (error) {
                 console.error('Error loading recent transactions:', error);
                 document.getElementById('recentTransactions').innerHTML = 
-                    '<div class="error">Error loading transactions</div>';
+                    '<div class="empty-state"><p>No transactions yet</p></div>';
             }
         }
 
@@ -296,77 +564,54 @@
             const container = document.getElementById('recentTransactions');
             
             if (transactions.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                        <p>No transactions yet</p>
-                        <a href="qr_payment.html" class="btn btn-primary" style="margin-top: 10px;">Make a Payment</a>
-                    </div>
-                `;
+                container.innerHTML = '<div class="empty-state"><p>No transactions yet</p></div>';
                 return;
             }
 
-            const html = transactions.map(txn => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--bg-secondary); margin-bottom: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div>
-                        <div style="font-weight: 600; margin-bottom: 5px;">${txn.package_name}</div>
-                        <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                            ${txn.upi_transaction_id ? `TXN: ${txn.upi_transaction_id}` : `Order: ${txn.order_id}`}
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 600; color: var(--success-color);">₹${txn.amount}</div>
-                        <div style="font-size: 0.9rem; color: var(--text-secondary);">${txn.credits} credits</div>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                            ${new Date(txn.created_at).toLocaleDateString()}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-
+            const html = `
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Package</th>
+                            <th>Amount</th>
+                            <th>Credits</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map(txn => `
+                            <tr>
+                                <td>${new Date(txn.created_at).toLocaleDateString()}</td>
+                                <td>${txn.package_name}</td>
+                                <td>₹${txn.amount_in_rupees}</td>
+                                <td>${txn.credits}</td>
+                                <td><span class="status-badge ${txn.status}">${txn.status}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
             container.innerHTML = html;
         }
 
-        function copyReferralCode() {
-            const codeInput = document.getElementById('referralCode');
-            codeInput.select();
-            document.execCommand('copy');
-            alert('Referral code copied to clipboard!');
-        }
-
-        function downloadApp() {
-            window.open('https://www.mediafire.com/file/4zhdhoo9ewjlo6d/CodetantraAutomationPro.7z/file', '_blank');
-        }
-
-        function qrPayment() {
-            window.location.href = 'qr_payment.html';
-        }
-
-        function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-        }
-
-        // Admin functionality
+        // Admin Dashboard Functions
         let adminCurrentPage = 1;
         let adminTotalPages = 1;
         let adminAllTransactions = [];
 
+        async function loadAdminDashboard() {
+            await loadAdminTransactions();
+        }
+
         async function loadAdminTransactions(page = 1) {
             try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}/api/qr-payment/admin/transactions?page=${page}&limit=20`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                const response = await fetch(`${API_URL}/api/qr-payment/admin/transactions?page=${page}&limit=50`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (!response.ok) {
-                    if (response.status === 403) {
-                        // Not admin, hide admin section
-                        document.getElementById('adminSection').style.display = 'none';
-                        return;
-                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
@@ -378,35 +623,31 @@
                 displayAdminTransactions(data.transactions);
                 updateAdminPagination(data.pagination);
                 updateAdminStats(data.transactions);
-
-                // Show admin section if user is admin
-                document.getElementById('adminSection').style.display = 'block';
-
             } catch (error) {
                 console.error('Error loading admin transactions:', error);
-                document.getElementById('adminTransactionsBody').innerHTML = 
-                    '<tr><td colspan="8" class="error">Error loading admin transactions</td></tr>';
+                document.getElementById('adminTransactionsBody').innerHTML =
+                    '<tr><td colspan="8" class="empty-state"><p>Error loading transactions</p></td></tr>';
             }
         }
 
         function displayAdminTransactions(transactions) {
             const tbody = document.getElementById('adminTransactionsBody');
-            
+
             if (transactions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="loading">No transactions found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><p>No transactions found</p></td></tr>';
                 return;
             }
 
             const html = transactions.map(txn => `
                 <tr>
-                    <td>${txn.id}</td>
-                    <td><span class="upi-id">${txn.upi_transaction_id || 'N/A'}</span></td>
-                    <td>${txn.user_email}</td>
-                    <td>${txn.package_name}</td>
-                    <td>₹${txn.amount}</td>
-                    <td>${txn.credits}</td>
-                    <td><span class="status ${txn.status}">${txn.status}</span></td>
-                    <td>${new Date(txn.created_at).toLocaleString()}</td>
+                    <td style="font-weight: 600;">#${txn.id}</td>
+                    <td><span class="transaction-id-badge">${txn.upi_transaction_id || 'N/A'}</span></td>
+                    <td style="color: #94a3b8;">${txn.user_email}</td>
+                    <td><strong>${txn.package_name}</strong></td>
+                    <td style="font-weight: 600;">₹${txn.amount}</td>
+                    <td style="color: #667eea; font-weight: 600;">${txn.credits}</td>
+                    <td><span class="status-badge ${txn.status}">${txn.status}</span></td>
+                    <td style="color: #94a3b8;">${new Date(txn.created_at).toLocaleString()}</td>
                 </tr>
             `).join('');
 
@@ -431,15 +672,26 @@
         }
 
         function updateAdminStats(transactions) {
+            // For proper stats, we need all transactions, not just current page
+            // So we'll fetch them separately or calculate from current data
             const totalTxn = transactions.length;
             const successfulTxn = transactions.filter(txn => txn.status === 'success').length;
             const pendingTxn = transactions.filter(txn => txn.status === 'pending').length;
-            const totalRevenue = transactions.reduce((sum, txn) => sum + txn.amount, 0);
+            const totalRevenue = transactions.filter(txn => txn.status === 'success').reduce((sum, txn) => sum + txn.amount, 0);
 
-            document.getElementById('adminTotalTransactions').textContent = totalTxn;
-            document.getElementById('adminSuccessfulTransactions').textContent = successfulTxn;
-            document.getElementById('adminPendingTransactions').textContent = pendingTxn;
-            document.getElementById('adminTotalRevenue').textContent = `₹${totalRevenue}`;
+            // Fetch total counts from API
+            fetch(`${API_URL}/api/qr-payment/admin/transactions?page=1&limit=1000`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).then(res => res.json()).then(data => {
+                const allTxns = data.transactions;
+                document.getElementById('adminTotalTransactions').textContent = allTxns.length;
+                document.getElementById('adminSuccessfulTransactions').textContent = 
+                    allTxns.filter(t => t.status === 'success').length;
+                document.getElementById('adminPendingTransactions').textContent = 
+                    allTxns.filter(t => t.status === 'pending').length;
+                document.getElementById('adminTotalRevenue').textContent = 
+                    `₹${allTxns.filter(t => t.status === 'success').reduce((sum, t) => sum + t.amount, 0)}`;
+            });
         }
 
         function previousAdminPage() {
@@ -465,7 +717,7 @@
             }
 
             if (searchInput) {
-                filteredTransactions = filteredTransactions.filter(txn => 
+                filteredTransactions = filteredTransactions.filter(txn =>
                     (txn.upi_transaction_id && txn.upi_transaction_id.toLowerCase().includes(searchInput)) ||
                     txn.user_email.toLowerCase().includes(searchInput) ||
                     txn.order_id.toLowerCase().includes(searchInput)
@@ -473,7 +725,6 @@
             }
 
             displayAdminTransactions(filteredTransactions);
-            updateAdminStats(filteredTransactions);
         }
 
         function refreshAdminData() {
@@ -481,23 +732,42 @@
         }
 
         function exportTransactions() {
-            const csvContent = "data:text/csv;charset=utf-8," + 
+            const csvContent = "data:text/csv;charset=utf-8," +
                 "ID,UPI Transaction ID,User Email,Package,Amount,Credits,Status,Created\n" +
-                adminAllTransactions.map(txn => 
+                adminAllTransactions.map(txn =>
                     `${txn.id},"${txn.upi_transaction_id || ''}","${txn.user_email}","${txn.package_name}",${txn.amount},${txn.credits},${txn.status},"${new Date(txn.created_at).toLocaleString()}"`
                 ).join("\n");
-            
+
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "transactions.csv");
+            link.setAttribute("download", `transactions_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
-        loadDashboard();
+        // Common Functions
+        function copyReferralCode() {
+            const code = document.getElementById('referralCode');
+            code.select();
+            document.execCommand('copy');
+            alert('Referral code copied to clipboard!');
+        }
+
+        function downloadApp() {
+            window.open('https://www.mediafire.com/file/iyem8ruwl1uedti/CodetantraAutomationPro.7z/file', '_blank');
+        }
+
+        function qrPayment() {
+            window.location.href = 'qr_payment.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
     </script>
 </body>
 </html>
-
