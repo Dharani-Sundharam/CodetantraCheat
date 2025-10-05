@@ -19,3 +19,6 @@ FRONTEND_URL=http://localhost:3000
 # Admin User Configuration
 ADMIN_EMAIL=admin@codetantra.ac.in
 ADMIN_PASSWORD=admin123
+
+# Encryption Key for Desktop Application
+ENCRYPTION_KEY=ct_automation_encryption_key_2024_secure

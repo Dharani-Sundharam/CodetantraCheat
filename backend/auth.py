@@ -135,3 +135,22 @@ async def get_current_admin(current_user: User = Depends(get_current_user)) -> U
         )
     return current_user
 
+def get_current_user_from_token(token: str, db: Session) -> Optional[User]:
+    """Get current user from JWT token string (for encryption key endpoint)"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+    except JWTError:
+        return None
+    
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        return None
+    
+    if not user.is_active:
+        return None
+    
+    return user
+

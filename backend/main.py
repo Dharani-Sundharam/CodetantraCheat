@@ -3,7 +3,7 @@ CodeTantra Automation Service - Main FastAPI Application
 Complete API for authentication, credits, and user management
 """
 
-from fastapi import FastAPI, Depends, HTTPException, status, Response
+from fastapi import FastAPI, Depends, HTTPException, status, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime, timedelta
+import os
 
 import database
 import auth
@@ -514,6 +515,38 @@ async def get_stats(
             "total_problems_solved": 0,
             "error": str(e)
         }
+
+@app.get("/api/encryption/key")
+async def get_encryption_key(request: Request, db: Session = Depends(get_db)):
+    """Get encryption key for desktop application"""
+    try:
+        # Get encryption key from environment variable
+        encryption_key = os.getenv("ENCRYPTION_KEY", "ct_automation_encryption_key_2024_secure")
+        
+        # Check if request has authorization header
+        auth_header = request.headers.get("Authorization")
+        
+        if auth_header and auth_header.startswith("Bearer "):
+            # User is authenticated, validate token
+            try:
+                token = auth_header.split(" ")[1]
+                user = auth.get_current_user_from_token(token, db)
+                if not user or not user.is_active:
+                    raise HTTPException(status_code=401, detail="Invalid or inactive user")
+            except Exception:
+                raise HTTPException(status_code=401, detail="Invalid authentication token")
+        else:
+            # No authentication - check if it's a valid server request
+            user_agent = request.headers.get("User-Agent", "")
+            if "SecureLoader" not in user_agent:
+                raise HTTPException(status_code=401, detail="Invalid request source")
+        
+        return {"key": encryption_key}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # Run server
 if __name__ == "__main__":
