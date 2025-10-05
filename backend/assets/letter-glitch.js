@@ -30,14 +30,14 @@ class LetterGlitch {
         this.canvas.style.display = 'block';
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
-        this.canvas.style.position = 'absolute';
+        this.canvas.style.position = 'fixed';
         this.canvas.style.top = '0';
         this.canvas.style.left = '0';
         this.canvas.style.zIndex = '-1';
+        this.canvas.style.pointerEvents = 'none';
         
         // Create container styles
         container.style.position = 'relative';
-        container.style.backgroundColor = '#000000';
         container.style.overflow = 'hidden';
         
         // Add canvas to container
@@ -137,23 +137,22 @@ class LetterGlitch {
 
     resizeCanvas() {
         if (!this.canvas) return;
-        const parent = this.canvas.parentElement;
-        if (!parent) return;
 
         const dpr = window.devicePixelRatio || 1;
-        const rect = parent.getBoundingClientRect();
+        const width = window.innerWidth;
+        const height = window.innerHeight;
 
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
+        this.canvas.width = width * dpr;
+        this.canvas.height = height * dpr;
 
-        this.canvas.style.width = `${rect.width}px`;
-        this.canvas.style.height = `${rect.height}px`;
+        this.canvas.style.width = `${width}px`;
+        this.canvas.style.height = `${height}px`;
 
         if (this.context) {
             this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
-        const { columns, rows } = this.calculateGrid(rect.width, rect.height);
+        const { columns, rows } = this.calculateGrid(width, height);
         this.initializeLetters(columns, rows);
 
         this.drawLetters();
@@ -162,7 +161,8 @@ class LetterGlitch {
     drawLetters() {
         if (!this.context || this.letters.length === 0) return;
         const ctx = this.context;
-        const { width, height } = this.canvas.getBoundingClientRect();
+        const width = this.canvas.width / (window.devicePixelRatio || 1);
+        const height = this.canvas.height / (window.devicePixelRatio || 1);
         ctx.clearRect(0, 0, width, height);
         ctx.font = `${this.fontSize}px monospace`;
         ctx.textBaseline = 'top';
@@ -249,27 +249,35 @@ class LetterGlitch {
 
 // Initialize letter glitch background when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if we should use letter glitch (default)
-    const useLetters = !window.location.search.includes('bg=squares') && 
-                      localStorage.getItem('backgroundType') !== 'squares';
+    // Check if we should use letter glitch (all pages except login, signup, dashboard)
+    const currentPath = window.location.pathname;
+    const useLetters = !currentPath.includes('login.html') && 
+                      !currentPath.includes('signup.html') && 
+                      !currentPath.includes('dashboard.html') &&
+                      !window.location.search.includes('bg=squares');
     
     if (useLetters) {
-        // Apply to body or specific container
-        const body = document.body;
-        
+        // Wait a bit for page to fully load
+        setTimeout(() => {
+            // Apply to body or specific container
+            const body = document.body;
+            
         // Create letter glitch instance
         const letterGlitch = new LetterGlitch({
             glitchColors: ['#2b4539', '#61dca3', '#61b3dc'],
-            glitchSpeed: 50,
+            glitchSpeed: 150,
             centerVignette: false,
             outerVignette: true,
             smooth: true
         });
-        
-        // Initialize the effect
-        letterGlitch.init(body);
-        
-        // Store reference for potential cleanup
-        window.letterGlitch = letterGlitch;
+            
+            // Initialize the effect
+            letterGlitch.init(body);
+            
+            // Store reference for potential cleanup
+            window.letterGlitch = letterGlitch;
+            
+            console.log('Letter glitch initialized on page:', window.location.pathname);
+        }, 100);
     }
 });

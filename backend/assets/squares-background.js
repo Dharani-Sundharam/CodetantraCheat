@@ -26,10 +26,11 @@ class SquaresBackground {
         this.canvas.style.height = '100%';
         this.canvas.style.border = 'none';
         this.canvas.style.display = 'block';
-        this.canvas.style.position = 'absolute';
+        this.canvas.style.position = 'fixed';
         this.canvas.style.top = '0';
         this.canvas.style.left = '0';
         this.canvas.style.zIndex = '-1';
+        this.canvas.style.pointerEvents = 'auto';
         
         // Add canvas to container
         container.appendChild(this.canvas);
@@ -42,10 +43,13 @@ class SquaresBackground {
     resizeCanvas() {
         if (!this.canvas) return;
         
-        this.canvas.width = this.canvas.offsetWidth;
-        this.canvas.height = this.canvas.offsetHeight;
-        this.numSquaresX = Math.ceil(this.canvas.width / this.squareSize) + 1;
-        this.numSquaresY = Math.ceil(this.canvas.height / this.squareSize) + 1;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.numSquaresX = Math.ceil(width / this.squareSize) + 1;
+        this.numSquaresY = Math.ceil(height / this.squareSize) + 1;
     }
 
     drawGrid() {
@@ -86,7 +90,8 @@ class SquaresBackground {
             Math.sqrt(this.canvas.width ** 2 + this.canvas.height ** 2) / 2
         );
         gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+        gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.2)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
 
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -183,32 +188,40 @@ class SquaresBackground {
 
 // Initialize squares background when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if we should use squares instead of letter glitch
-    const useSquares = window.location.search.includes('bg=squares') || 
-                      localStorage.getItem('backgroundType') === 'squares';
+    // Check if we should use squares (login, signup, dashboard pages)
+    const currentPath = window.location.pathname;
+    const useSquares = currentPath.includes('login.html') || 
+                      currentPath.includes('signup.html') || 
+                      currentPath.includes('dashboard.html') ||
+                      window.location.search.includes('bg=squares');
     
     if (useSquares) {
-        // Remove existing letter glitch if present
-        if (window.letterGlitch) {
-            window.letterGlitch.destroy();
-        }
-        
-        // Apply to body
-        const body = document.body;
-        
-        // Create squares background instance
-        const squaresBackground = new SquaresBackground({
-            direction: 'diagonal',
-            speed: 0.5,
-            borderColor: '#333',
-            squareSize: 50,
-            hoverFillColor: '#444'
-        });
-        
-        // Initialize the effect
-        squaresBackground.init(body);
-        
-        // Store reference for potential cleanup
-        window.squaresBackground = squaresBackground;
+        // Wait a bit for page to fully load
+        setTimeout(() => {
+            // Remove existing letter glitch if present
+            if (window.letterGlitch) {
+                window.letterGlitch.destroy();
+            }
+            
+            // Apply to body
+            const body = document.body;
+            
+            // Create squares background instance
+            const squaresBackground = new SquaresBackground({
+                direction: 'diagonal',
+                speed: 0.2,
+                borderColor: '#555',
+                squareSize: 50,
+                hoverFillColor: '#666'
+            });
+            
+            // Initialize the effect
+            squaresBackground.init(body);
+            
+            // Store reference for potential cleanup
+            window.squaresBackground = squaresBackground;
+            
+            console.log('Squares background initialized on page:', window.location.pathname);
+        }, 100);
     }
 });

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Test - CodeTantra Automation</title>
+    <link rel="stylesheet" href="assets/style-dark.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .test-content {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            z-index: 10;
+            position: relative;
+        }
+        
+        .test-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .test-buttons button {
+            padding: 10px 15px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .test-buttons button:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-buttons">
+        <button onclick="testLetterGlitch()">Test Letters</button>
+        <button onclick="testSquares()">Test Squares</button>
+        <button onclick="clearBackground()">Clear</button>
+    </div>
+    
+    <div class="test-content">
+        <h1>Background Effects Test</h1>
+        <p>This page is for testing the background effects locally.</p>
+        <p>Click the buttons above to test different backgrounds.</p>
+        <p>You should see either falling letters or moving squares in the background.</p>
+        
+        <h2>Test Content</h2>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+        <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+    </div>
+
+    <script src="assets/letter-glitch.js"></script>
+    <script src="assets/squares-background.js"></script>
+    
+    <script>
+        function testLetterGlitch() {
+            // Clear existing backgrounds
+            clearBackground();
+            
+            // Create letter glitch instance
+            const letterGlitch = new LetterGlitch({
+                glitchColors: ['#2b4539', '#61dca3', '#61b3dc'],
+                glitchSpeed: 150,
+                centerVignette: false,
+                outerVignette: true,
+                smooth: true
+            });
+            
+            // Initialize the effect
+            letterGlitch.init(document.body);
+            
+            // Store reference
+            window.currentBackground = letterGlitch;
+            
+            console.log('Letter glitch initialized');
+        }
+        
+        function testSquares() {
+            // Clear existing backgrounds
+            clearBackground();
+            
+            // Create squares background instance
+            const squaresBackground = new SquaresBackground({
+                direction: 'diagonal',
+                speed: 0.2,
+                borderColor: '#555',
+                squareSize: 50,
+                hoverFillColor: '#666'
+            });
+            
+            // Initialize the effect
+            squaresBackground.init(document.body);
+            
+            // Store reference
+            window.currentBackground = squaresBackground;
+            
+            console.log('Squares background initialized');
+        }
+        
+        function clearBackground() {
+            if (window.currentBackground) {
+                window.currentBackground.destroy();
+                window.currentBackground = null;
+            }
+            
+            // Remove any existing canvas elements
+            const canvases = document.querySelectorAll('canvas');
+            canvases.forEach(canvas => {
+                if (canvas.parentElement) {
+                    canvas.parentElement.removeChild(canvas);
+                }
+            });
+            
+            console.log('Background cleared');
+        }
+        
+        // Auto-test letter glitch on load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, testing letter glitch...');
+            setTimeout(() => {
+                testLetterGlitch();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

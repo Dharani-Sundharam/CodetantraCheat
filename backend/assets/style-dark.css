@@ -60,12 +60,21 @@ body::before {
     z-index: -1;
 }
 
-/* Ensure content is above the glitch effect */
+/* Ensure content is above the background effects */
 .dashboard-container,
 .navbar,
-.container {
+.container,
+.auth-container,
+.auth-box,
+.qr-payment-container,
+.payment-container {
     position: relative;
     z-index: 2;
+}
+
+/* Make sure body doesn't interfere with background */
+body {
+    background: transparent !important;
 }
 
 .container {
@@ -216,7 +225,7 @@ body::before {
 
 /* Hero Section */
 .hero {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: transparent;
     color: var(--text-primary);
     padding: 140px 0;
     text-align: center;
@@ -552,7 +561,7 @@ body::before {
 .dashboard-container {
     padding: 50px 0;
     min-height: calc(100vh - 80px);
-    background: var(--bg-dark);
+    background: transparent;
 }
 
 .dashboard-container h1 {
@@ -1018,7 +1027,7 @@ body::before {
 /* CTA Section */
 .cta {
     padding: 100px 0;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: transparent;
     text-align: center;
 }
 
