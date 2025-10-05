@@ -27,9 +27,44 @@
             font-size: 16px;
         }
 
+        .admin-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-tab {
+            padding: 15px 30px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .admin-tab:hover {
+            color: #e2e8f0;
+        }
+
+        .admin-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
         .admin-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -51,7 +86,7 @@
         }
 
         .admin-stat-card .stat-value {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: bold;
             color: #667eea;
             display: block;
@@ -59,7 +94,7 @@
         }
 
         .admin-stat-card .stat-label {
-            font-size: 14px;
+            font-size: 13px;
             color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -81,8 +116,7 @@
             max-width: 600px;
         }
 
-        .admin-search-bar input {
-            flex: 1;
+        .admin-search-bar input, .admin-search-bar select {
             padding: 12px 20px;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -91,19 +125,14 @@
             font-size: 14px;
         }
 
-        .admin-search-bar input:focus {
+        .admin-search-bar input {
+            flex: 1;
+        }
+
+        .admin-search-bar input:focus, .admin-search-bar select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .admin-search-bar select {
-            padding: 12px 20px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(36, 36, 36, 0.5);
-            color: white;
-            cursor: pointer;
         }
 
         .admin-actions {
@@ -190,6 +219,96 @@
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-small:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .btn-danger:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .btn-success:hover {
+            background: #10b981;
+            color: white;
+        }
+
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: rgba(36, 36, 36, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .close {
+            color: #94a3b8;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #94a3b8;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+        }
+
         .admin-pagination {
             display: flex;
             justify-content: center;
@@ -217,17 +336,6 @@
         .admin-pagination button:disabled {
             opacity: 0.3;
             cursor: not-allowed;
-        }
-
-        .admin-pagination .page-info {
-            color: #94a3b8;
-            font-size: 14px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #94a3b8;
         }
 
         .loading-spinner {
@@ -263,82 +371,169 @@
         <div class="container">
             <div class="admin-header">
                 <h1>🔐 Admin Dashboard</h1>
-                <p>Manage all user transactions and monitor system activity</p>
+                <p>Manage users, transactions, and monitor system activity</p>
             </div>
 
-            <!-- Admin Stats -->
-            <div class="admin-stats">
-                <div class="admin-stat-card">
-                    <span id="adminTotalTransactions" class="stat-value">0</span>
-                    <span class="stat-label">Total Transactions</span>
+            <!-- Admin Tabs -->
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchTab('users')">👥 User Management</button>
+                <button class="admin-tab" onclick="switchTab('transactions')">💳 Transactions</button>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="usersTab" class="tab-content active">
+                <!-- User Stats -->
+                <div class="admin-stats">
+                    <div class="admin-stat-card">
+                        <span id="totalUsers" class="stat-value">0</span>
+                        <span class="stat-label">Total Users</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="verifiedUsers" class="stat-value">0</span>
+                        <span class="stat-label">Verified Users</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="activeUsers" class="stat-value">0</span>
+                        <span class="stat-label">Active Users</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="totalProblems" class="stat-value">0</span>
+                        <span class="stat-label">Problems Solved</span>
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <span id="adminSuccessfulTransactions" class="stat-value">0</span>
-                    <span class="stat-label">Successful</span>
+
+                <!-- User Search -->
+                <div class="admin-controls">
+                    <div class="admin-search-bar">
+                        <input type="text" id="searchUsers" placeholder="Search users by email or name...">
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <span id="adminPendingTransactions" class="stat-value">0</span>
-                    <span class="stat-label">Pending</span>
-                </div>
-                <div class="admin-stat-card">
-                    <span id="adminTotalRevenue" class="stat-value">₹0</span>
-                    <span class="stat-label">Total Revenue</span>
+
+                <!-- Users Table -->
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>College</th>
+                                <th>Credits</th>
+                                <th>Status</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px;">
+                                    <div class="loading-spinner"></div>
+                                    <p style="color: #94a3b8; margin-top: 10px;">Loading users...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Admin Controls -->
-            <div class="admin-controls">
-                <div class="admin-search-bar">
-                    <input type="text" id="adminSearchInput" placeholder="Search UPI Transaction ID or User Email...">
-                    <select id="adminStatusFilter">
-                        <option value="">All Status</option>
-                        <option value="success">Success</option>
-                        <option value="pending">Pending</option>
-                        <option value="failed">Failed</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="applyAdminFilters()">Search</button>
+            <!-- Transactions Tab -->
+            <div id="transactionsTab" class="tab-content">
+                <!-- Transaction Stats -->
+                <div class="admin-stats">
+                    <div class="admin-stat-card">
+                        <span id="adminTotalTransactions" class="stat-value">0</span>
+                        <span class="stat-label">Total Transactions</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="adminSuccessfulTransactions" class="stat-value">0</span>
+                        <span class="stat-label">Successful</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="adminPendingTransactions" class="stat-value">0</span>
+                        <span class="stat-label">Pending</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span id="adminTotalRevenue" class="stat-value">₹0</span>
+                        <span class="stat-label">Total Revenue</span>
+                    </div>
                 </div>
-                <div class="admin-actions">
-                    <button class="btn btn-secondary" onclick="refreshAdminData()">
-                        <span>🔄</span> Refresh
-                    </button>
-                    <button class="btn btn-primary" onclick="exportTransactions()">
-                        <span>📥</span> Export CSV
-                    </button>
+
+                <!-- Transaction Controls -->
+                <div class="admin-controls">
+                    <div class="admin-search-bar">
+                        <input type="text" id="adminSearchInput" placeholder="Search UPI Transaction ID or User Email...">
+                        <select id="adminStatusFilter">
+                            <option value="">All Status</option>
+                            <option value="success">Success</option>
+                            <option value="pending">Pending</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="applyAdminFilters()">Search</button>
+                    </div>
+                    <div class="admin-actions">
+                        <button class="btn btn-secondary" onclick="refreshTransactions()">
+                            <span>🔄</span> Refresh
+                        </button>
+                        <button class="btn btn-primary" onclick="exportTransactions()">
+                            <span>📥</span> Export CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Transactions Table -->
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>UPI Transaction ID</th>
+                                <th>User Email</th>
+                                <th>Package</th>
+                                <th>Amount</th>
+                                <th>Credits</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTransactionsBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px;">
+                                    <div class="loading-spinner"></div>
+                                    <p style="color: #94a3b8; margin-top: 10px;">Loading transactions...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="admin-pagination" id="adminPagination" style="display: none;">
+                    <button onclick="previousAdminPage()" id="adminPrevBtn">← Previous</button>
+                    <span style="color: #94a3b8; font-size: 14px;" id="adminPageInfo">Page 1 of 1</span>
+                    <button onclick="nextAdminPage()" id="adminNextBtn">Next →</button>
                 </div>
             </div>
 
-            <!-- Admin Transactions Table -->
-            <div class="admin-table-container">
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>UPI Transaction ID</th>
-                            <th>User Email</th>
-                            <th>Package</th>
-                            <th>Amount</th>
-                            <th>Credits</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody id="adminTransactionsBody">
-                        <tr>
-                            <td colspan="8" style="text-align: center; padding: 40px;">
-                                <div class="loading-spinner"></div>
-                                <p style="color: #94a3b8; margin-top: 10px;">Loading transactions...</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Admin Pagination -->
-            <div class="admin-pagination" id="adminPagination" style="display: none;">
-                <button onclick="previousAdminPage()" id="adminPrevBtn">← Previous</button>
-                <span class="page-info" id="adminPageInfo">Page 1 of 1</span>
-                <button onclick="nextAdminPage()" id="adminNextBtn">Next →</button>
+            <!-- Credit Management Modal -->
+            <div id="creditModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <span class="close" onclick="closeCreditModal()">&times;</span>
+                    <h2 style="color: #e2e8f0; margin-bottom: 20px;">Manage Credits</h2>
+                    <form id="creditForm">
+                        <input type="hidden" id="userEmailInput">
+                        <div class="form-group">
+                            <label>User: <strong style="color: #667eea;" id="modalUserEmail"></strong></label>
+                        </div>
+                        <div class="form-group">
+                            <label for="creditsAmount">Credits to Add (negative to remove)</label>
+                            <input type="number" id="creditsAmount" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reason">Reason</label>
+                            <input type="text" id="reason" placeholder="e.g., Manual adjustment" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Update Credits</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -354,23 +549,169 @@
 
         document.getElementById('adminEmail').textContent = user.email;
 
-        // Admin Dashboard Functions
         let adminCurrentPage = 1;
         let adminTotalPages = 1;
         let adminAllTransactions = [];
+        let allUsers = [];
 
-        // Load admin data on page load
-        loadAdminTransactions();
+        // Tab Switching
+        function switchTab(tab) {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'users') {
+                document.querySelector('[onclick="switchTab(\'users\')"]').classList.add('active');
+                document.getElementById('usersTab').classList.add('active');
+            } else {
+                document.querySelector('[onclick="switchTab(\'transactions\')"]').classList.add('active');
+                document.getElementById('transactionsTab').classList.add('active');
+                if (adminAllTransactions.length === 0) {
+                    loadAdminTransactions();
+                }
+            }
+        }
 
+        // Load Users
+        async function loadAdminData() {
+            try {
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+
+                const statsRes = await fetch(`${API_URL}/api/admin/stats`, { headers });
+                if (statsRes.ok) {
+                    const stats = await statsRes.json();
+                    document.getElementById('totalUsers').textContent = stats.total_users;
+                    document.getElementById('verifiedUsers').textContent = stats.verified_users;
+                    document.getElementById('activeUsers').textContent = stats.active_users;
+                    document.getElementById('totalProblems').textContent = stats.total_problems_solved;
+                }
+
+                const usersRes = await fetch(`${API_URL}/api/admin/users`, { headers });
+                if (usersRes.ok) {
+                    const data = await usersRes.json();
+                    allUsers = data.users;
+                    displayUsers(allUsers);
+                }
+            } catch (error) {
+                console.error('Error loading admin data:', error);
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTable');
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8;">No users found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.name}</td>
+                    <td>${u.email}</td>
+                    <td>${u.college_name}</td>
+                    <td style="color: #667eea; font-weight: 600;">${u.credits}</td>
+                    <td><span class="status-badge ${u.is_active ? 'success' : 'failed'}">${u.is_active ? 'Active' : 'Suspended'}</span></td>
+                    <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button onclick="openCreditModal('${u.email}')" class="btn-small">Credits</button>
+                        <button onclick="toggleUserStatus('${u.email}', ${u.is_active})" class="btn-small ${u.is_active ? 'btn-danger' : 'btn-success'}">
+                            ${u.is_active ? 'Suspend' : 'Activate'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // User Search
+        document.getElementById('searchUsers').addEventListener('input', (e) => {
+            const search = e.target.value.toLowerCase();
+            const filtered = allUsers.filter(u => 
+                u.email.toLowerCase().includes(search) || 
+                u.name.toLowerCase().includes(search)
+            );
+            displayUsers(filtered);
+        });
+
+        // Credit Modal
+        function openCreditModal(email) {
+            document.getElementById('userEmailInput').value = email;
+            document.getElementById('modalUserEmail').textContent = email;
+            document.getElementById('creditModal').style.display = 'flex';
+        }
+
+        function closeCreditModal() {
+            document.getElementById('creditModal').style.display = 'none';
+            document.getElementById('creditForm').reset();
+        }
+
+        document.getElementById('creditForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('userEmailInput').value;
+            const credits = parseInt(document.getElementById('creditsAmount').value);
+            const reason = document.getElementById('reason').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/admin/credits`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_email: email,
+                        credits_to_add: credits,
+                        reason: reason
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Credits updated successfully!');
+                    closeCreditModal();
+                    loadAdminData();
+                } else {
+                    alert('Failed to update credits');
+                }
+            } catch (error) {
+                alert('Error updating credits');
+            }
+        });
+
+        async function toggleUserStatus(email, isActive) {
+            const endpoint = isActive ? 'suspend-user' : 'activate-user';
+            const action = isActive ? 'suspend' : 'activate';
+            
+            if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/api/admin/${endpoint}?user_email=${email}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    alert(`User ${action}d successfully!`);
+                    loadAdminData();
+                } else {
+                    alert(`Failed to ${action} user`);
+                }
+            } catch (error) {
+                alert(`Error ${action}ing user`);
+            }
+        }
+
+        // Load Transactions
         async function loadAdminTransactions(page = 1) {
             try {
                 const response = await fetch(`${API_URL}/api/qr-payment/admin/transactions?page=${page}&limit=50`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const data = await response.json();
                 adminAllTransactions = data.transactions;
@@ -379,11 +720,11 @@
 
                 displayAdminTransactions(data.transactions);
                 updateAdminPagination(data.pagination);
-                updateAdminStats(data.transactions);
+                updateAdminStats();
             } catch (error) {
                 console.error('Error loading admin transactions:', error);
                 document.getElementById('adminTransactionsBody').innerHTML =
-                    '<tr><td colspan="8" class="empty-state"><p>Error loading transactions</p></td></tr>';
+                    '<tr><td colspan="8" style="text-align: center; color: #94a3b8;">Error loading transactions</td></tr>';
             }
         }
 
@@ -391,7 +732,7 @@
             const tbody = document.getElementById('adminTransactionsBody');
 
             if (transactions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><p>No transactions found</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #94a3b8;">No transactions found</td></tr>';
                 return;
             }
 
@@ -428,8 +769,7 @@
             nextBtn.disabled = pagination.page >= pagination.pages;
         }
 
-        function updateAdminStats(transactions) {
-            // Fetch total counts from API
+        function updateAdminStats() {
             fetch(`${API_URL}/api/qr-payment/admin/transactions?page=1&limit=1000`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             }).then(res => res.json()).then(data => {
@@ -477,7 +817,7 @@
             displayAdminTransactions(filteredTransactions);
         }
 
-        function refreshAdminData() {
+        function refreshTransactions() {
             loadAdminTransactions(adminCurrentPage);
         }
 
@@ -502,7 +842,9 @@
             localStorage.removeItem('user');
             window.location.href = 'login.html';
         }
+
+        // Load initial data
+        loadAdminData();
     </script>
 </body>
 </html>
-
